@@ -90,6 +90,7 @@ class Range {
       : Range() {
     set_range_var(start, start_size, end, end_size);
   }
+
   /** Copy constructor. */
   Range(const Range&) = default;
 

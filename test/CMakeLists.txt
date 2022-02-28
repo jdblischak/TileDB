@@ -254,6 +254,8 @@ if (TILEDB_EXPERIMENTAL_FEATURES)
     src/test-capi-dimension_labels.cc
     src/test-dimension_labels-read-consistency.cc
     src/unit_intersect_fragments.cc
+    src/test-IncreasingLabelsQuery.cc
+    src/test-UnorderedLabelsQuery.cc
   )
 endif()
 
