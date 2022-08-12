@@ -46,54 +46,40 @@ OrderedLabelsReadQuery::OrderedLabelsReadQuery(
     const RangeSetAndSuperset& label_ranges,
     const RangeSetAndSuperset& index_ranges,
     const QueryBuffer& label_data_buffer)
-    : dimension_label_{dimension_label}
-    , storage_manager_{storage_manager}
-    , stats_{storage_manager_->stats()->create_child("DimensionLabelQuery")}
-    , logger_(
-          storage_manager->logger()->clone("DimensionLabelQuery", ++logger_id_))
-    , data_query_{nullptr}
-    , label_ranges_{label_ranges}
-    , index_ranges_{index_ranges}
-    , label_buffer_{label_data_buffer} {
-  if (dimension_label_->query_type() != QueryType::READ)
+    : data_query_{nullptr} {
+  if (dimension_label->query_type() != QueryType::READ)
     throw std::invalid_argument(
         "Failed to create dimension label query. Cannot read from dimension "
         "label opened with query type " +
-        query_type_str(dimension_label_->query_type()) + ".");
-  if (!label_ranges_.is_empty() && !index_ranges_.is_empty())
+        query_type_str(dimension_label->query_type()) + ".");
+  if (!label_ranges.is_empty() && !index_ranges.is_empty())
     throw StatusException(Status_DimensionLabelQueryError(
         "Failed to create dimension label query. Cannot add both index and "
         "label ranges to dimension label query."));
   if (label_data_buffer.buffer_) {
-    if (!label_ranges_.is_empty()) {
+    if (!label_ranges.is_empty()) {
       data_query_ = tdb_unique_ptr<Query>(
-          tdb_new(Query, storage_manager_, dimension_label_->labelled_array()));
+          tdb_new(Query, storage_manager, dimension_label->labelled_array()));
       throw_if_not_ok(data_query_->set_layout(Layout::ROW_MAJOR));
-      Subarray subarray{dimension_label_->labelled_array().get(),
-                        Layout::ROW_MAJOR,
-                        stats_,
-                        logger_};
-      throw_if_not_ok(subarray.set_ranges_for_dim(0, label_ranges_.ranges()));
+      Subarray subarray{*data_query_->subarray()};
+      throw_if_not_ok(subarray.set_ranges_for_dim(0, label_ranges.ranges()));
       throw_if_not_ok(data_query_->set_subarray(subarray));
       throw_if_not_ok(data_query_->set_data_buffer(
-          dimension_label_->label_attribute()->name(),
-          label_buffer_.buffer_,
-          label_buffer_.buffer_size_,
+          dimension_label->label_attribute()->name(),
+          label_data_buffer.buffer_,
+          label_data_buffer.buffer_size_,
           false));
-    } else if (!index_ranges_.is_empty()) {
+    } else if (!index_ranges.is_empty()) {
       data_query_ = tdb_unique_ptr<Query>(
-          tdb_new(Query, storage_manager_, dimension_label_->indexed_array()));
+          tdb_new(Query, storage_manager, dimension_label->indexed_array()));
       throw_if_not_ok(data_query_->set_layout(Layout::ROW_MAJOR));
-      Subarray subarray{dimension_label_->indexed_array().get(),
-                        Layout::ROW_MAJOR,
-                        stats_,
-                        logger_};
-      throw_if_not_ok(subarray.set_ranges_for_dim(0, index_ranges_.ranges()));
+      Subarray subarray{*data_query_->subarray()};
+      throw_if_not_ok(subarray.set_ranges_for_dim(0, index_ranges.ranges()));
       throw_if_not_ok(data_query_->set_subarray(subarray));
       throw_if_not_ok(data_query_->set_data_buffer(
-          dimension_label_->label_attribute()->name(),
-          label_buffer_.buffer_,
-          label_buffer_.buffer_size_,
+          dimension_label->label_attribute()->name(),
+          label_data_buffer.buffer_,
+          label_data_buffer.buffer_size_,
           false));
     }
   }

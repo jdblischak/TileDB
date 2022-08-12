@@ -73,36 +73,13 @@ class OrderedLabelsReadQuery : public DimensionLabelQuery {
   void finalize() override;
 
   /** TODO */
-  void set_label_data_buffer(
-      void* const buffer,
-      uint64_t* const buffer_size,
-      const bool check_null_buffers);
-
-  /** TODO */
   QueryStatus status() const override;
 
   /** TODO */
   void submit() override;
 
  private:
-  /** UID of the logger instance */
-  inline static std::atomic<uint64_t> logger_id_ = 0;
-
-  shared_ptr<DimensionLabel> dimension_label_;
-
-  StorageManager* storage_manager_;
-
-  stats::Stats* stats_;
-
-  shared_ptr<Logger> logger_;
-
   tdb_unique_ptr<Query> data_query_;
-
-  RangeSetAndSuperset label_ranges_;
-
-  RangeSetAndSuperset index_ranges_;
-
-  QueryBuffer label_buffer_;
 };
 
 }  // namespace tiledb::sm
