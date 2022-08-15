@@ -138,6 +138,54 @@ void tiledb_dimension_label_schema_free(
   }
 }
 
+int32_t tiledb_query_set_label_data_buffer(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    const char* name,
+    void* buffer,
+    uint64_t* buffer_size) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+    return TILEDB_ERR;
+  query->query_->set_label_data_buffer(name, buffer, buffer_size);
+  return TILEDB_OK;
+}
+
+int32_t tiledb_query_set_label_offsets_buffer(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    const char* name,
+    uint64_t* buffer,
+    uint64_t* buffer_size) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+    return TILEDB_ERR;
+  query->query_->set_label_offsets_buffer(name, buffer, buffer_size);
+  return TILEDB_OK;
+}
+
+int32_t tiledb_query_get_label_data_buffer(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    const char* name,
+    void** buffer,
+    uint64_t** buffer_size) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+    return TILEDB_ERR;
+  query->query_->get_label_data_buffer(name, buffer, buffer_size);
+  return TILEDB_OK;
+}
+
+int32_t tiledb_query_get_label_offsets_buffer(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    const char* name,
+    uint64_t** buffer,
+    uint64_t** buffer_size) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+    return TILEDB_ERR;
+  query->query_->get_label_offsets_buffer(name, buffer, buffer_size);
+  return TILEDB_OK;
+}
+
 int32_t tiledb_subarray_add_label_range(
     tiledb_ctx_t* ctx,
     tiledb_subarray_t* subarray,
@@ -277,6 +325,46 @@ void tiledb_dimension_label_schema_free(
     tiledb_dimension_label_schema_t** dim_label_schema) noexcept {
   return api_entry_void<detail::tiledb_dimension_label_schema_free>(
       dim_label_schema);
+}
+
+int32_t tiledb_query_set_label_data_buffer(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    const char* name,
+    void* buffer,
+    uint64_t* buffer_size) noexcept {
+  return api_entry<detail::tiledb_query_set_label_data_buffer>(
+      ctx, query, name, buffer, buffer_size);
+}
+
+int32_t tiledb_query_set_label_offsets_buffer(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    const char* name,
+    uint64_t* buffer,
+    uint64_t* buffer_size) noexcept {
+  return api_entry<detail::tiledb_query_set_label_offsets_buffer>(
+      ctx, query, name, buffer, buffer_size);
+}
+
+int32_t tiledb_query_get_label_data_buffer(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    const char* name,
+    void** buffer,
+    uint64_t** buffer_size) noexcept {
+  return api_entry<detail::tiledb_query_get_label_data_buffer>(
+      ctx, query, name, buffer, buffer_size);
+}
+
+int32_t tiledb_query_get_label_offsets_buffer(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    const char* name,
+    uint64_t** buffer,
+    uint64_t** buffer_size) noexcept {
+  return api_entry<detail::tiledb_query_get_label_offsets_buffer>(
+      ctx, query, name, buffer, buffer_size);
 }
 
 int32_t tiledb_subarray_add_label_range(

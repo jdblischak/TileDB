@@ -430,6 +430,14 @@ class Query {
   Status get_data_buffer(
       const char* name, void** buffer, uint64_t** buffer_size) const;
 
+  /** TODO */
+  void get_label_data_buffer(
+      const std::string& name, void** buffer, uint64_t** buffer_size) const;
+
+  /** TODO */
+  void get_label_offsets_buffer(
+      const std::string& name, uint64_t** buffer, uint64_t** buffer_size) const;
+
   /**
    * Retrieves the offset buffer for a var-sized attribute/dimension.
    *
@@ -633,6 +641,20 @@ class Query {
       const std::string& name,
       void* const buffer,
       uint64_t* const buffer_size,
+      const bool check_null_buffers = true);
+
+  /** TODO */
+  void set_label_data_buffer(
+      const std::string& name,
+      void* const buffer,
+      uint64_t* const buffer_size,
+      const bool check_null_buffers = true);
+
+  /** TODO */
+  void set_label_offsets_buffer(
+      const std::string& name,
+      uint64_t* const buffer_offsets,
+      uint64_t* const buffer_offsets_size,
       const bool check_null_buffers = true);
 
   /**
@@ -987,6 +1009,9 @@ class Query {
    * buffer.
    * */
   std::unordered_map<std::string, QueryBuffer> buffers_;
+
+  /** Maps label names to their buffers. */
+  std::unordered_map<std::string, QueryBuffer> label_buffers_;
 
   /** Keeps track of the coords data. */
   CoordsInfo coords_info_;
