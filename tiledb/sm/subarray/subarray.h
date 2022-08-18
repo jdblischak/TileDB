@@ -369,6 +369,14 @@ class Subarray {
       const std::string& attr_name) const;
 
   /**
+   * Returns the name of the dimension label at the dimension index if label
+   * ranges are set and ``nullopt`` otherwise.
+   *
+   * @param dim_index Index of the dimension to return the label name for.
+   */
+  const std::string& get_label_name(const uint32_t dim_index) const;
+
+  /**
    * Retrieves a range from a dimension label name in the form (start, end,
    * stride).
    *
@@ -848,6 +856,19 @@ class Subarray {
    *     interval ``[start, end]`` in the flattened range order.
    */
   Subarray get_subarray(uint64_t start, uint64_t end) const;
+
+  /**
+   * Returns ``true`` if the any dimension in the subarray have label ranges
+   * set.
+   */
+  bool has_label_ranges() const;
+
+  /**
+   * Returns ``true`` if the dimension index has label ranges set.
+   *
+   * @param dim_idx The dimension index to check for ranges.
+   */
+  bool has_label_ranges(const uint32_t dim_index) const;
 
   /**
    * Set default indicator for dimension subarray. Used by serialization only

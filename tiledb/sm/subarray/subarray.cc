@@ -104,7 +104,7 @@ Subarray::Subarray(
     StorageManager* storage_manager)
     : stats_(
           parent_stats ? parent_stats->create_child("Subarray") :
-          storage_manager ?
+                         storage_manager ?
                          storage_manager->stats()->create_child("subSubarray") :
                          nullptr)
     , logger_(logger->clone("Subarray", ++logger_id_))
@@ -542,6 +542,10 @@ const std::vector<Range>& Subarray::get_attribute_ranges(
     const std::string& attr_name) const {
   const auto& ranges = attr_range_subset_.at(attr_name);
   return ranges;
+}
+
+const std::string& Subarray::get_label_name(const uint32_t dim_index) const {
+  return label_range_subset_[dim_index]->name;
 }
 
 void Subarray::get_label_range(
@@ -1004,6 +1008,20 @@ Subarray Subarray::get_subarray(uint64_t start, uint64_t end) const {
   ret.compute_range_offsets();
 
   return ret;
+}
+
+bool Subarray::has_label_ranges() const {
+  return std::any_of(
+      label_range_subset_.cbegin(),
+      label_range_subset_.cend(),
+      [](const auto& range_subset) {
+        return range_subset.has_value() && !range_subset->ranges.is_empty();
+      });
+}
+
+bool Subarray::has_label_ranges(const uint32_t dim_index) const {
+  return label_range_subset_[dim_index].has_value() &&
+         !label_range_subset_[dim_index]->ranges.is_empty();
 }
 
 bool Subarray::is_default(uint32_t dim_index) const {
