@@ -85,13 +85,53 @@ class ResultTile {
     TileTuple() = delete;
 
     /** Constructor with var_size and nullable parameters. */
-    TileTuple(bool var_size, bool nullable) {
+    TileTuple(
+        const uint32_t format_version,
+        const ArraySchema& array_schema,
+        const std::string& name,
+        const uint64_t tile_size,
+        const uint64_t tile_persisted_size,
+        const uint64_t tile_var_size,
+        const uint64_t tile_var_persisted_size,
+        const uint64_t tile_validity_size,
+        const uint64_t tile_validity_persisted_size,
+        const bool var_size,
+        const bool nullable)
+        : fixed_tile_(
+              var_size ?
+                  Tile(
+                      format_version,
+                      constants::cell_var_offset_type,
+                      constants::cell_var_offset_size,
+                      0,
+                      tile_size,
+                      tile_persisted_size) :
+                  Tile(
+                      format_version,
+                      array_schema.type(name),
+                      array_schema.cell_size(name),
+                      (name == constants::coords) ? array_schema.dim_num() : 0,
+                      tile_size,
+                      tile_persisted_size)) {
       if (var_size) {
-        var_tile_ = Tile();
+        auto type = array_schema.type(name);
+        var_tile_ = Tile(
+            format_version,
+            type,
+            datatype_size(type),
+            0,
+            tile_var_size,
+            tile_var_persisted_size);
       }
 
       if (nullable) {
-        validity_tile_ = Tile();
+        validity_tile_ = Tile(
+            format_version,
+            constants::cell_validity_type,
+            constants::cell_validity_size,
+            0,
+            tile_validity_size,
+            tile_validity_persisted_size);
       }
     }
 
@@ -198,11 +238,32 @@ class ResultTile {
   void erase_tile(const std::string& name);
 
   /** Initializes the result tile for the given attribute. */
-  void init_attr_tile(const std::string& name, bool var_size, bool nullable);
+  void init_attr_tile(
+      const uint32_t format_version,
+      const ArraySchema& array_schema,
+      const std::string& name,
+      const uint64_t tile_size,
+      const uint64_t tile_persisted_size,
+      const uint64_t tile_var_size,
+      const uint64_t tile_var_persisted_size,
+      const uint64_t tile_validity_size,
+      const uint64_t tile_validity_persisted_size,
+      bool var_size,
+      bool nullable);
 
   /** Initializes the result tile for the given dimension name and index. */
   void init_coord_tile(
-      const std::string& name, bool var_size, unsigned dim_idx);
+      const uint32_t format_version,
+      const ArraySchema& array_schema,
+      const std::string& name,
+      const uint64_t tile_size,
+      const uint64_t tile_persisted_size,
+      const uint64_t tile_var_size,
+      const uint64_t tile_var_persisted_size,
+      const uint64_t tile_validity_size,
+      const uint64_t tile_validity_persisted_size,
+      bool var_size,
+      unsigned dim_idx);
 
   /** Returns the tile pair for the input attribute or dimension. */
   TileTuple* tile_tuple(const std::string& name);

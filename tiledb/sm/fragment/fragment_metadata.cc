@@ -1604,15 +1604,13 @@ const std::vector<NDRange>& FragmentMetadata::mbrs() const {
   return rtree_.leaves();
 }
 
-tuple<Status, optional<uint64_t>> FragmentMetadata::persisted_tile_size(
+uint64_t FragmentMetadata::persisted_tile_size(
     const std::string& name, uint64_t tile_idx) {
   auto it = idx_map_.find(name);
   assert(it != idx_map_.end());
   auto idx = it->second;
   if (!loaded_metadata_.tile_offsets_[idx]) {
-    return {LOG_STATUS(Status_FragmentMetadataError(
-                "Trying to access metadata that's not loaded")),
-            nullopt};
+    throw std::logic_error("Trying to access metadata that's not present");
   }
 
   auto tile_num = this->tile_num();
@@ -1621,20 +1619,17 @@ tuple<Status, optional<uint64_t>> FragmentMetadata::persisted_tile_size(
       (tile_idx != tile_num - 1) ?
           tile_offsets_[idx][tile_idx + 1] - tile_offsets_[idx][tile_idx] :
           file_sizes_[idx] - tile_offsets_[idx][tile_idx];
-
-  return {Status::Ok(), tile_size};
+  return tile_size;
 }
 
-tuple<Status, optional<uint64_t>> FragmentMetadata::persisted_tile_var_size(
+uint64_t FragmentMetadata::persisted_tile_var_size(
     const std::string& name, uint64_t tile_idx) {
   auto it = idx_map_.find(name);
   assert(it != idx_map_.end());
   auto idx = it->second;
 
   if (!loaded_metadata_.tile_var_offsets_[idx]) {
-    return {LOG_STATUS(Status_FragmentMetadataError(
-                "Trying to access metadata that's not loaded")),
-            nullopt};
+    throw std::logic_error("Trying to access metadata that's not present");
   }
 
   auto tile_num = this->tile_num();
@@ -1643,20 +1638,16 @@ tuple<Status, optional<uint64_t>> FragmentMetadata::persisted_tile_var_size(
                        tile_var_offsets_[idx][tile_idx + 1] -
                            tile_var_offsets_[idx][tile_idx] :
                        file_var_sizes_[idx] - tile_var_offsets_[idx][tile_idx];
-
-  return {Status::Ok(), tile_size};
+  return tile_size;
 }
 
-tuple<Status, optional<uint64_t>>
-FragmentMetadata::persisted_tile_validity_size(
+uint64_t FragmentMetadata::persisted_tile_validity_size(
     const std::string& name, uint64_t tile_idx) {
   auto it = idx_map_.find(name);
   assert(it != idx_map_.end());
   auto idx = it->second;
   if (!loaded_metadata_.tile_validity_offsets_[idx]) {
-    return {LOG_STATUS(Status_FragmentMetadataError(
-                "Trying to access metadata that's not loaded")),
-            nullopt};
+    throw std::logic_error("Trying to access metadata that's not present");
   }
 
   auto tile_num = this->tile_num();
@@ -1666,8 +1657,7 @@ FragmentMetadata::persisted_tile_validity_size(
           tile_validity_offsets_[idx][tile_idx + 1] -
               tile_validity_offsets_[idx][tile_idx] :
           file_validity_sizes_[idx] - tile_validity_offsets_[idx][tile_idx];
-
-  return {Status::Ok(), tile_size};
+  return tile_size;
 }
 
 uint64_t FragmentMetadata::tile_size(

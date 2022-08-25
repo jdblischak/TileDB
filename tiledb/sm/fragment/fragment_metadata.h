@@ -584,10 +584,9 @@ class FragmentMetadata {
    *
    * @param name The input attribute/dimension.
    * @param tile_idx The index of the tile in the metadata.
-   * @return Status, size
+   * @return Size.
    */
-  tuple<Status, optional<uint64_t>> persisted_tile_size(
-      const std::string& name, uint64_t tile_idx);
+  uint64_t persisted_tile_size(const std::string& name, uint64_t tile_idx);
 
   /**
    * Retrieves the size of the tile when it is persisted (e.g. the size of the
@@ -596,10 +595,9 @@ class FragmentMetadata {
    *
    * @param name The input attribute/dimension.
    * @param tile_idx The index of the tile in the metadata.
-   * @return Status, size
+   * @return Size.
    */
-  tuple<Status, optional<uint64_t>> persisted_tile_var_size(
-      const std::string& name, uint64_t tile_idx);
+  uint64_t persisted_tile_var_size(const std::string& name, uint64_t tile_idx);
 
   /**
    * Retrieves the size of the validity tile when it is persisted (e.g. the size
@@ -607,9 +605,9 @@ class FragmentMetadata {
    *
    * @param name The input attribute.
    * @param tile_idx The index of the tile in the metadata.
-   * @return Status, size
+   * @return Size.
    */
-  tuple<Status, optional<uint64_t>> persisted_tile_validity_size(
+  uint64_t persisted_tile_validity_size(
       const std::string& name, uint64_t tile_idx);
 
   /**

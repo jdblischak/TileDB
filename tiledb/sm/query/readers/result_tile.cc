@@ -167,41 +167,85 @@ void ResultTile::erase_tile(const std::string& name) {
 }
 
 void ResultTile::init_attr_tile(
-    const std::string& name, bool var_size, bool nullable) {
-  // Nothing to do for the special zipped coordinates tile
+    const uint32_t format_version,
+    const ArraySchema& array_schema,
+    const std::string& name,
+    const uint64_t tile_size,
+    const uint64_t tile_persisted_size,
+    const uint64_t tile_var_size,
+    const uint64_t tile_var_persisted_size,
+    const uint64_t tile_validity_size,
+    const uint64_t tile_validity_persisted_size,
+    bool var_size,
+    bool nullable) {
+  auto tuple = TileTuple(
+      format_version,
+      array_schema,
+      name,
+      tile_size,
+      tile_persisted_size,
+      tile_var_size,
+      tile_var_persisted_size,
+      tile_validity_size,
+      tile_validity_persisted_size,
+      var_size,
+      nullable);
+
   if (name == constants::coords) {
-    coords_tile_ = TileTuple(false, false);
+    coords_tile_ = std::move(tuple);
     return;
   }
 
   if (name == constants::timestamps) {
-    timestamps_tile_ = TileTuple(false, false);
+    timestamps_tile_ = std::move(tuple);
     return;
   }
 
   if (name == constants::delete_timestamps) {
-    delete_timestamps_tile_ = TileTuple(false, false);
+    delete_timestamps_tile_ = std::move(tuple);
     return;
   }
 
   if (name == constants::delete_condition_index) {
-    delete_condition_index_tile_ = TileTuple(false, false);
+    delete_condition_index_tile_ = std::move(tuple);
     return;
   }
 
   // Handle attributes
   for (auto& at : attr_tiles_) {
     if (at.first == name && at.second == nullopt) {
-      at.second = TileTuple(var_size, nullable);
+      at.second = std::move(tuple);
       return;
     }
   }
 }
 
 void ResultTile::init_coord_tile(
-    const std::string& name, bool var_size, unsigned dim_idx) {
-  coord_tiles_[dim_idx] =
-      std::pair<std::string, TileTuple>(name, TileTuple(var_size, false));
+    const uint32_t format_version,
+    const ArraySchema& array_schema,
+    const std::string& name,
+    const uint64_t tile_size,
+    const uint64_t tile_persisted_size,
+    const uint64_t tile_var_size,
+    const uint64_t tile_var_persisted_size,
+    const uint64_t tile_validity_size,
+    const uint64_t tile_validity_persisted_size,
+    bool var_size,
+    unsigned dim_idx) {
+  coord_tiles_[dim_idx] = std::pair<std::string, TileTuple>(
+      name,
+      TileTuple(
+          format_version,
+          array_schema,
+          name,
+          tile_size,
+          tile_persisted_size,
+          tile_var_size,
+          tile_var_persisted_size,
+          tile_validity_size,
+          tile_validity_persisted_size,
+          var_size,
+          false));
 
   // When at least one unzipped coordinate has been initialized, we will
   // use the unzipped `coord()` implementation.
