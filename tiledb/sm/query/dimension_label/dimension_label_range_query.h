@@ -102,7 +102,11 @@ class DimensionLabelRangeQuery {
   Range computed_label_range_;
   Range computed_index_range_;
   Query lower_bound_query_;
+  uint64_t lower_bound_index_buffer_size_;
+  uint64_t lower_bound_label_buffer_size_;
   Query upper_bound_query_;
+  uint64_t upper_bound_index_buffer_size_;
+  uint64_t upper_bound_label_buffer_size_;
   std::function<bool(const Range& range1, const Range& range2)>
       has_extra_range_element_;
   std::function<void(Range& range)> fix_index_range_;

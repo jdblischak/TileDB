@@ -90,6 +90,7 @@ class Range {
       : Range() {
     set_range_var(start, start_size, end, end_size);
   }
+
   /** Copy constructor. */
   Range(const Range&) = default;
 
@@ -390,12 +391,94 @@ void crop_range(const Range& bounds, Range& range) {
   range_data[1] = std::min(bounds_data[1], range_data[1]);
 };
 
+template <
+    typename T,
+    typename std::enable_if<std::is_integral<T>::value>::type* = nullptr>
+void decrease_lower_bound(Range& range) {
+  --static_cast<T*>(const_cast<void*>(range.data()))[0];
+}
+
+template <
+    typename T,
+    typename std::enable_if<std::is_integral<T>::value>::type* = nullptr>
+void decrease_upper_bound(Range& range) {
+  --static_cast<T*>(const_cast<void*>(range.data()))[1];
+}
+
+template <
+    typename T,
+    typename std::enable_if<std::is_integral<T>::value>::type* = nullptr>
+void increase_lower_bound(Range& range) {
+  ++static_cast<T*>(const_cast<void*>(range.data()))[0];
+}
+
+template <
+    typename T,
+    typename std::enable_if<std::is_integral<T>::value>::type* = nullptr>
+void increase_upper_bound(Range& range) {
+  ++static_cast<T*>(const_cast<void*>(range.data()))[1];
+}
+
+template <
+    typename T,
+    typename std::enable_if<std::is_arithmetic<T>::value>::type* = nullptr>
+bool lower_bound_equal(const Range& r1, const Range& r2) {
+  const auto x1 = static_cast<const T*>(r1.data());
+  const auto x2 = static_cast<const T*>(r2.data());
+  return *x1 == *x2;
+}
+
+template <
+    typename T,
+    typename std::enable_if<std::is_arithmetic<T>::value>::type* = nullptr>
+bool lower_bound_greater_than(const Range& r1, const Range& r2) {
+  const auto x1 = static_cast<const T*>(r1.data());
+  const auto x2 = static_cast<const T*>(r2.data());
+  return *x1 > *x2;
+}
+
+template <
+    typename T,
+    typename std::enable_if<std::is_arithmetic<T>::value>::type* = nullptr>
+bool lower_bound_less_than(const Range& r1, const Range& r2) {
+  const auto x1 = static_cast<const T*>(r1.data());
+  const auto x2 = static_cast<const T*>(r2.data());
+  return *x1 < *x2;
+}
+
 /**
  * Returns a string representation of the range.
  *
  * @param range The range to get a string representation of.
  */
 std::string range_str(const Range& range, const tiledb::sm::Datatype type);
+
+template <
+    typename T,
+    typename std::enable_if<std::is_arithmetic<T>::value>::type* = nullptr>
+bool upper_bound_equal(const Range& r1, const Range& r2) {
+  const auto x1 = static_cast<const T*>(r1.data())[1];
+  const auto x2 = static_cast<const T*>(r2.data())[1];
+  return x1 == x2;
+}
+
+template <
+    typename T,
+    typename std::enable_if<std::is_arithmetic<T>::value>::type* = nullptr>
+bool upper_bound_greater_than(const Range& r1, const Range& r2) {
+  const auto x1 = static_cast<const T*>(r1.data())[1];
+  const auto x2 = static_cast<const T*>(r2.data())[1];
+  return x1 > x2;
+}
+
+template <
+    typename T,
+    typename std::enable_if<std::is_arithmetic<T>::value>::type* = nullptr>
+bool upper_bound_less_than(const Range& r1, const Range& r2) {
+  const auto x1 = static_cast<const T*>(r1.data())[1];
+  const auto x2 = static_cast<const T*>(r2.data())[1];
+  return x1 < x2;
+}
 
 }  // namespace tiledb::type
 
