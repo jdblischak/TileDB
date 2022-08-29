@@ -36,7 +36,7 @@
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/query/query.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
-#include "tiledb/sm/subarray/range_subset.h"
+#include "tiledb/type/range/range.h"
 
 namespace tiledb::sm {
 
@@ -104,35 +104,35 @@ std::function<void(Range& range)> index_range_fixer(
     case Datatype::INT8:
       return order == LabelOrder::INCREASING_LABELS ?
                  decrease_upper_bound<int8_t> :
-                 increase_upper_bound<int8_t>;
+                 increase_lower_bound<int8_t>;
     case Datatype::UINT8:
       return order == LabelOrder::INCREASING_LABELS ?
                  decrease_upper_bound<uint8_t> :
-                 increase_upper_bound<uint8_t>;
+                 increase_lower_bound<uint8_t>;
     case Datatype::INT16:
       return order == LabelOrder::INCREASING_LABELS ?
                  decrease_upper_bound<int16_t> :
-                 increase_upper_bound<int16_t>;
+                 increase_lower_bound<int16_t>;
     case Datatype::UINT16:
       return order == LabelOrder::INCREASING_LABELS ?
                  decrease_upper_bound<uint16_t> :
-                 increase_upper_bound<uint16_t>;
+                 increase_lower_bound<uint16_t>;
     case Datatype::INT32:
       return order == LabelOrder::INCREASING_LABELS ?
                  decrease_upper_bound<int32_t> :
-                 increase_upper_bound<int32_t>;
+                 increase_lower_bound<int32_t>;
     case Datatype::UINT32:
       return order == LabelOrder::INCREASING_LABELS ?
                  decrease_upper_bound<uint32_t> :
-                 increase_upper_bound<uint32_t>;
+                 increase_lower_bound<uint32_t>;
     case Datatype::INT64:
       return order == LabelOrder::INCREASING_LABELS ?
                  decrease_upper_bound<int64_t> :
-                 increase_upper_bound<int64_t>;
+                 increase_lower_bound<int64_t>;
     case Datatype::UINT64:
       return order == LabelOrder::INCREASING_LABELS ?
                  decrease_upper_bound<uint64_t> :
-                 increase_upper_bound<uint64_t>;
+                 increase_lower_bound<uint64_t>;
     case Datatype::DATETIME_YEAR:
     case Datatype::DATETIME_MONTH:
     case Datatype::DATETIME_WEEK:
@@ -157,7 +157,7 @@ std::function<void(Range& range)> index_range_fixer(
     case Datatype::TIME_AS:
       return order == LabelOrder::INCREASING_LABELS ?
                  decrease_upper_bound<int64_t> :
-                 increase_upper_bound<int64_t>;
+                 increase_lower_bound<int64_t>;
     default:
       throw std::invalid_argument(
           "Index datatype '" + datatype_str(type) +
@@ -168,7 +168,7 @@ std::function<void(Range& range)> index_range_fixer(
 DimensionLabelRangeQuery::DimensionLabelRangeQuery(
     DimensionLabel* dimension_label,
     StorageManager* storage_manager,
-    const RangeSetAndSuperset& label_ranges)
+    const std::vector<Range>& label_ranges)
     : order_{dimension_label->label_order()}
     , input_label_range_{}
     , computed_index_range_{dimension_label->index_dimension()->domain()}
@@ -186,17 +186,22 @@ DimensionLabelRangeQuery::DimensionLabelRangeQuery(
           dimension_label->label_dimension()->type())}
     , fix_index_range_{index_range_fixer(
           order_, dimension_label->index_attribute()->type())} {
+  if (dimension_label->query_type() != QueryType::READ) {
+    throw StatusException(
+        Status_RangeQueryError("Cannot read dimension label range; Dimension "
+                               "label open for writing."));
+  }
   // TODO: ensure label data is a supported type
   // TODO: ensure index data is a supported type
 
   // Check there is exactly one range in the label ranges.
-  if (label_ranges.num_ranges() == 0)
-    throw Status_RangeQueryError(
-        "Cannot initialize range query; no query to set.");
-  if (label_ranges.num_ranges() > 1) {
-    throw Status_RangeQueryError(
+  if (label_ranges.size() == 0)
+    throw StatusException(Status_RangeQueryError(
+        "Cannot initialize range query; no query to set."));
+  if (label_ranges.size() > 1) {
+    throw StatusException(Status_RangeQueryError(
         "Cannot initialize range query; Setting more than one label range is "
-        "currently unsupported.");
+        "currently unsupported."));
   }
   // Set the input label range and initialize the compute label range.
   input_label_range_ = label_ranges[0];
@@ -208,45 +213,88 @@ DimensionLabelRangeQuery::DimensionLabelRangeQuery(
   const auto label_name = label_dim->name();
   const auto index_name = dimension_label->index_attribute()->name();
 
-  // Create query for the lower bound.
-  throw_if_not_ok(lower_bound_query_.set_layout(Layout::ROW_MAJOR));
-  throw_if_not_ok(lower_bound_query_.add_range(
-      0, input_label_range_.start_fixed(), label_domain.end_fixed(), nullptr));
-  throw_if_not_ok(lower_bound_query_.set_data_buffer(
-      label_name,
-      const_cast<void*>(computed_label_range_.start_fixed()),
-      &lower_bound_label_buffer_size_));
-
-  // Create query for the upper bound
-  throw_if_not_ok(upper_bound_query_.set_layout(Layout::ROW_MAJOR));
-  throw_if_not_ok(upper_bound_query_.add_range(
-      0, input_label_range_.end_fixed(), label_domain.end_fixed(), nullptr));
-  throw_if_not_ok(upper_bound_query_.set_data_buffer(
-      label_name,
-      const_cast<void*>(computed_label_range_.end_fixed()),
-      &upper_bound_label_buffer_size_));
-
   // Set data buffer for computed index range.
   switch (order_) {
     case (LabelOrder::INCREASING_LABELS):
+      // Create query for the label lower bound.
+      //  - Input range: [input_label_range[0], input_label_range[1]]
+      //  - Label buffer: computed_label_range[0]
+      //  - Index buffer: computed_index_range[1]
+      throw_if_not_ok(lower_bound_query_.set_layout(Layout::ROW_MAJOR));
+      throw_if_not_ok(lower_bound_query_.add_range(
+          0,
+          input_label_range_.start_fixed(),
+          input_label_range_.end_fixed(),
+          nullptr));
+      throw_if_not_ok(lower_bound_query_.set_data_buffer(
+          label_name,
+          const_cast<void*>(computed_label_range_.start_fixed()),
+          &lower_bound_label_buffer_size_));
       throw_if_not_ok(lower_bound_query_.set_data_buffer(
           index_name,
           const_cast<void*>(computed_index_range_.start_fixed()),
           &lower_bound_label_buffer_size_));
+
+      // Create query for the upper bound
+      //  - Input range: [input_label_range[0], input_label_range[1]]
+      //  - Label buffer: computed_label_range[1]
+      //  - Index buffer: computed_index_range[1]
+      throw_if_not_ok(upper_bound_query_.set_layout(Layout::ROW_MAJOR));
+      throw_if_not_ok(upper_bound_query_.add_range(
+          0,
+          input_label_range_.end_fixed(),
+          label_domain.end_fixed(),
+          nullptr));
+      throw_if_not_ok(upper_bound_query_.set_data_buffer(
+          label_name,
+          const_cast<void*>(computed_label_range_.end_fixed()),
+          &upper_bound_label_buffer_size_));
+
       throw_if_not_ok(upper_bound_query_.set_data_buffer(
           index_name,
           const_cast<void*>(computed_index_range_.end_fixed()),
           &upper_bound_index_buffer_size_));
+
       break;
     case (LabelOrder::DECREASING_LABELS):
-      throw_if_not_ok(upper_bound_query_.set_data_buffer(
-          index_name,
-          const_cast<void*>(computed_index_range_.start_fixed()),
-          &upper_bound_index_buffer_size_));
+      // Create query for the label lower bound.
+      //  - Input range: [input_label_range[0], input_label_range[1]]
+      //  - Label buffer: computed_label_range[0]
+      //  - Index buffer: computed_index_range[1]
+      throw_if_not_ok(lower_bound_query_.set_layout(Layout::ROW_MAJOR));
+      throw_if_not_ok(lower_bound_query_.add_range(
+          0,
+          input_label_range_.start_fixed(),
+          input_label_range_.end_fixed(),
+          nullptr));
+      throw_if_not_ok(lower_bound_query_.set_data_buffer(
+          label_name,
+          const_cast<void*>(computed_label_range_.start_fixed()),
+          &lower_bound_label_buffer_size_));
       throw_if_not_ok(lower_bound_query_.set_data_buffer(
           index_name,
           const_cast<void*>(computed_index_range_.end_fixed()),
           &lower_bound_index_buffer_size_));
+
+      // Create query for the upper bound
+      //  - Input range: [input_label_range[0], input_label_range[1]]
+      //  - Label buffer: computed_label_range[1]
+      //  - Index buffer: computed_index_range[0]
+      throw_if_not_ok(upper_bound_query_.set_layout(Layout::ROW_MAJOR));
+      throw_if_not_ok(upper_bound_query_.add_range(
+          0,
+          input_label_range_.end_fixed(),
+          label_domain.end_fixed(),
+          nullptr));
+      throw_if_not_ok(upper_bound_query_.set_data_buffer(
+          label_name,
+          const_cast<void*>(computed_label_range_.end_fixed()),
+          &upper_bound_label_buffer_size_));
+      throw_if_not_ok(upper_bound_query_.set_data_buffer(
+          index_name,
+          const_cast<void*>(computed_index_range_.start_fixed()),
+          &upper_bound_index_buffer_size_));
+
       break;
     default:
       throw std::invalid_argument(
@@ -269,23 +317,26 @@ void DimensionLabelRangeQuery::finalize() {
   throw_if_not_ok(upper_bound_query_.finalize());
 }
 
-void DimensionLabelRangeQuery::submit() {
+void DimensionLabelRangeQuery::process() {
   auto status = lower_bound_query_.process();
   if (!status.ok()) {
+    status_ = QueryStatus::FAILED;
     upper_bound_query_.cancel();
     throw StatusException(status);
   }
+  if (!lower_bound_query_.has_results()) {
+    // TODO: Check that this only happens when we successful read no result.
+    upper_bound_query_.finalize();
+    computed_index_range_ = Range();
+    status_ = QueryStatus::COMPLETED;
+    return;
+  }
+
   status = upper_bound_query_.process();
   if (!status.ok()) {
+    status_ = QueryStatus::FAILED;
     lower_bound_query_.cancel();
     throw StatusException(status);
-  }
-  if (!lower_bound_query_.has_results() || !upper_bound_query_.has_results()) {
-    status_ = QueryStatus::FAILED;
-    lower_bound_query_.finalize();
-    upper_bound_query_.finalize();
-    throw StatusException(
-        Status_RangeQueryError("Failed to read index range from label."));
   }
   // This will compare the upper bound of the label query and fix the computed
   // index range the values do no match.
@@ -295,8 +346,9 @@ void DimensionLabelRangeQuery::submit() {
   //
   // For decreasing labels, if the computed label upper bound is greater than
   // the input range, we need to increase the range to the next value.
-  if (has_extra_range_element_(computed_label_range_, input_label_range_))
+  if (has_extra_range_element_(computed_label_range_, input_label_range_)) {
     fix_index_range_(computed_index_range_);
+  }
   status_ = QueryStatus::COMPLETED;
 }
 

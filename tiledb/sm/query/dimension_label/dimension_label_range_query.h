@@ -34,6 +34,7 @@
 #define TILEDB_DIMENSION_LABEL_RANGE_QUERY_H
 
 #include <string>
+#include <vector>
 #include "tiledb/sm/dimension_label/dimension_label.h"
 #include "tiledb/sm/enums/query_status.h"
 #include "tiledb/sm/query/query.h"
@@ -43,7 +44,6 @@ namespace tiledb::sm {
 class Array;
 class DimensionLabel;
 class Query;
-class RangeSetAndSuperset;
 
 /** Return a Status_RangeQueryError error class Status with a given
  * message. Note: currently set to return Query error. **/
@@ -68,7 +68,7 @@ class DimensionLabelRangeQuery {
   DimensionLabelRangeQuery(
       DimensionLabel* dimension_label,
       StorageManager* storage_manager,
-      const RangeSetAndSuperset& label_ranges);
+      const std::vector<Range>& label_ranges);
 
   /** Disable copy and move. */
   DISABLE_COPY_AND_COPY_ASSIGN(DimensionLabelRangeQuery);
@@ -93,8 +93,8 @@ class DimensionLabelRangeQuery {
     return status_;
   }
 
-  /** Submits the query. */
-  void submit();
+  /** Process the query. */
+  void process();
 
  private:
   LabelOrder order_;
