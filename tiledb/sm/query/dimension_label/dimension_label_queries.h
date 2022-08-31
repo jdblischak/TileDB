@@ -33,15 +33,26 @@
 #ifndef TILEDB_DIMENSION_LABELS_QUERIES_H
 #define TILEDB_DIMENSION_LABELS_QUERIES_H
 
+#include <unordered_map>
 #include "tiledb/common/common.h"
+#include "tiledb/sm/query/dimension_label/dimension_label_data_query.h"
+#include "tiledb/sm/query/dimension_label/dimension_label_range_query.h"
 
 using namespace tiledb::common;
 
 namespace tiledb::sm {
 
+class Array;
 class DimensionLabel;
+class DimensionLabelDataQuery;
+class DimensionLabelRangeQuery;
+class DimensionLabelReference;
 class Query;
+class QueryBuffer;
 class StorageManager;
+class Subarray;
+
+enum class QueryType : uint8_t;
 
 /**
  * Return a Status_DimensionQueryError error class Status with a given
@@ -49,54 +60,73 @@ class StorageManager;
  *
  * Note: Returns error as a QueryError.
  ***/
-inline Status Status_DimensionQueryError(const std::string& msg) {
+inline Status Status_DimensionLabelQueryError(const std::string& msg) {
   return {"[TileDB::Query] Error", msg};
 }
 
 class DimensionLabelQueries {
  public:
   /** Default constructor is not C.41 compliant. */
-  DimensionLabelQueries() = delete;
+  // DimensionLabelQueries() = delete;
 
   /** Constructor. */
-  DimensionLabelQueries(StorageManager* storage_manager);
+  /*
+DimensionLabelQueries(
+   StorageManager* storage_manager,
+   shared_ptr<Array> array,
+   const Subarray& subarray,
+   const std::unordered_map<std::string, QueryBuffer>& label_data_buffers,
+   const std::unordered_map<std::string, QueryBuffer>& label_offset_buffers,
+   const std::unordered_map<std::string, QueryBuffer>& array_data_buffers,
+   optional<std::string> fragment_name);
+*/
 
-  void add_dimension_labels(
-      const Subarray& subarray, const std::vector<QueryBuffer>& label_buffers);
+  /** Disable copy and move. */
+  DISABLE_COPY_AND_COPY_ASSIGN(DimensionLabelQueries);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(DimensionLabelQueries);
 
-  void process_range_queries();
-  void process_data_queries();
   void cancel();
   void finalize();
+  void process_data_queries();
+  void process_range_queries();
+
+  /** TODO: docs */
+  DimensionLabel* open_dimension_label(
+      StorageManager* storage_manager,
+      Array* array,
+      const DimensionLabelReference& dim_label_ref,
+      const QueryType& query_type,
+      const bool open_indexed_array,
+      const bool open_labelled_array);
+
+  /** TODO: docs */
+  void add_range_queries(
+      StorageManager* storage_manager,
+      Array* array,
+      const Subarray& subarray,
+      const std::unordered_map<std::string, QueryBuffer>& label_data_buffers,
+      const std::unordered_map<std::string, QueryBuffer>& label_offset_buffers,
+      const std::unordered_map<std::string, QueryBuffer>& array_data_buffers);
 
  private:
-  /** TODO */
-  StorageManager* storage_manager_;
+  /** TODO: docs */
+  std::unordered_map<std::string, tdb_unique_ptr<DimensionLabel>>
+      dimension_labels_;
 
-  /** TODO */
-  std::vector<unique_ptr<DimensionLabelRangeQuery>> ordered_range_queries_;
+  /** TODO: docs */
+  std::unordered_map<std::string, tdb_unique_ptr<DimensionLabelRangeQuery>>
+      range_queries_;
 
-  /** TODO */
-  std::vector<unique_ptr<Query>> unordered_range_queries_;
-
-  /** TODO */
-  std::vector<unique_ptr<Query>> data_queries_;
-
-  /** TODO */
-  void add_ordered_query(
-      DimensionLabel* dimension_label,
-      StorageManager* storage_manager,
-      const RangeSetAndSuperset& label_ranges,
-      const RangeSetAndSuperset& index_ranges,
-      const QueryBuffer& label_data_buffer);
-
-  /** TODO */
-  void add_unordered_query(
-      DimensionLabel* dimension_label,
-      StorageManager* storage_manager,
-      const RangeSetAndSuperset& label_ranges,
-      const RangeSetAndSuperset& index_ranges,
-      const QueryBuffer& label_data_buffer);
+  /** TODO: docs */
+  std::unordered_map<std::string, tdb_unique_ptr<DimensionLabelDataQuery>>
+      data_queries_;
+  /** TODO: docs */
+  /*
+  void add_data_queries_for_read(
+      const Subarray& subarray,
+      const std::unordered_map<std::string, QueryBuffer>& label_data_buffers,
+      const std::unordered_map<std::string, QueryBuffer>& label_offset_buffers);
+  */
 };
 
 }  // namespace tiledb::sm
