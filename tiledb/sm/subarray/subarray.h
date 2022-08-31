@@ -942,6 +942,14 @@ class Subarray {
       const std::string& attr_name, const std::vector<Range>& ranges);
 
   /**
+   * Returns the `Range` vector for the given dimension label.
+   *
+   * @param label_name The name of the label to return ranges for.
+   */
+  const std::vector<Range>& ranges_for_label(
+      const std::string& label_name) const;
+
+  /**
    * Directly sets the `Range` vector for the given dimension index, making
    * a deep copy.
    *

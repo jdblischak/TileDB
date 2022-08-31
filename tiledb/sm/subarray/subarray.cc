@@ -1782,6 +1782,20 @@ void Subarray::set_attribute_ranges(
   attr_range_subset_[attr_name] = ranges;
 }
 
+const std::vector<Range>& Subarray::ranges_for_label(
+    const std::string& label_name) const {
+  auto dim_idx = array_->array_schema_latest()
+                     .dimension_label_reference(label_name)
+                     .dimension_id();
+  if (!label_range_subset_[dim_idx].has_value() ||
+      label_range_subset_[dim_idx].value().name != label_name) {
+    throw StatusException(Status_SubarrayError(
+        "Cannot get label ranges; No ranges set on dimension label '" +
+        label_name + "'"));
+  }
+  return label_range_subset_[dim_idx].value().ranges.ranges();
+}
+
 Status Subarray::set_ranges_for_dim(
     uint32_t dim_idx, const std::vector<Range>& ranges) {
   auto dim{array_->array_schema_latest().dimension_ptr(dim_idx)};
