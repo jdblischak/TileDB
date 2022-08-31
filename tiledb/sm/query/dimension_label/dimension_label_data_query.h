@@ -58,7 +58,8 @@ class DimensionLabelDataQuery {
       StorageManager* storage_manager,
       DimensionLabel* dimension_label,
       bool add_indexed_query,
-      bool add_labelled_query);
+      bool add_labelled_query,
+      optional<std::string> fragment_name = nullopt);
 
   /** TODO */
   void cancel();

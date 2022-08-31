@@ -39,16 +39,17 @@ DimensionLabelDataQuery::DimensionLabelDataQuery(
     StorageManager* storage_manager,
     DimensionLabel* dimension_label,
     bool add_indexed_query,
-    bool add_labelled_query)
+    bool add_labelled_query,
+    optional<std::string> fragment_name)
     : indexed_array_query{
           add_indexed_query ?
               tdb_unique_ptr<Query>(tdb_new(
-                  Query, storage_manager, dimension_label->indexed_array())) :
+                  Query, storage_manager, dimension_label->indexed_array(), fragment_name)) :
               nullptr} 
     , labelled_array_query{
           add_labelled_query ?
               tdb_unique_ptr<Query>(tdb_new(
-                  Query, storage_manager, dimension_label->labelled_array())) :
+                  Query, storage_manager, dimension_label->labelled_array(), fragment_name)) :
               nullptr} {
 }
 

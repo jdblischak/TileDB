@@ -100,6 +100,24 @@ DimensionLabelQueries(
       const bool open_labelled_array);
 
   /** TODO: docs */
+  void add_data_queries_for_read(
+      StorageManager* storage_manager,
+      Array* array,
+      const Subarray& subarray,
+      const std::unordered_map<std::string, QueryBuffer>& label_data_buffers,
+      const std::unordered_map<std::string, QueryBuffer>& label_offset_buffers);
+
+  /** TODO: docs */
+  void add_data_queries_for_write(
+      StorageManager* storage_manager,
+      Array* array,
+      const Subarray& subarray,
+      const std::unordered_map<std::string, QueryBuffer>& label_data_buffers,
+      const std::unordered_map<std::string, QueryBuffer>& label_offset_buffers,
+      const std::unordered_map<std::string, QueryBuffer>& array_data_buffers,
+      const optional<std::string> fragment_name);
+
+  /** TODO: docs */
   void add_range_queries(
       StorageManager* storage_manager,
       Array* array,
@@ -120,13 +138,6 @@ DimensionLabelQueries(
   /** TODO: docs */
   std::unordered_map<std::string, tdb_unique_ptr<DimensionLabelDataQuery>>
       data_queries_;
-  /** TODO: docs */
-  /*
-  void add_data_queries_for_read(
-      const Subarray& subarray,
-      const std::unordered_map<std::string, QueryBuffer>& label_data_buffers,
-      const std::unordered_map<std::string, QueryBuffer>& label_offset_buffers);
-  */
 };
 
 }  // namespace tiledb::sm
