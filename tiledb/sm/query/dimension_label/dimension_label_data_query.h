@@ -44,7 +44,7 @@ class DimensionLabel;
 class Query;
 class StorageManager;
 
-struct DimensionLabelDataQuery {
+class DimensionLabelDataQuery {
  public:
   /** Default constructor. */
   DimensionLabelDataQuery() = default;
@@ -67,7 +67,7 @@ struct DimensionLabelDataQuery {
   void finalize();
 
   /** TODO */
-  void submit();
+  void process();
 
   /** TODO */
   tdb_unique_ptr<Query> indexed_array_query{nullptr};

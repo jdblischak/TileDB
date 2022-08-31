@@ -70,12 +70,14 @@ void DimensionLabelDataQuery::finalize() {
   }
 }
 
-void DimensionLabelDataQuery::submit() {
+void DimensionLabelDataQuery::process() {
   if (indexed_array_query) {
-    throw_if_not_ok(indexed_array_query->submit());
+    throw_if_not_ok(indexed_array_query->init());
+    throw_if_not_ok(indexed_array_query->process());
   }
   if (labelled_array_query) {
-    throw_if_not_ok(labelled_array_query->submit());
+    throw_if_not_ok(labelled_array_query->init());
+    throw_if_not_ok(labelled_array_query->process());
   }
 }
 
