@@ -643,6 +643,20 @@ class Query {
       uint64_t* const buffer_size,
       const bool check_null_buffers = true);
 
+  /**
+   * Wrapper to set the internal buffer for a dimension or attribute from a
+   * QueryBuffer.
+   *
+   * This function is intended to be a convenience method for use setting
+   * buffers for dimesnion labels.
+   *
+   * @WARNING Does not check for or copy validity data.
+   *
+   * @param name Name of the dimension or attribute to set the buffer for.
+   * @param buffer The query buffer to get the data from.
+   **/
+  void set_buffer(const std::string& name, const QueryBuffer& buffer);
+
   /** TODO */
   void set_label_data_buffer(
       const std::string& name,
