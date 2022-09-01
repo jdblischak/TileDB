@@ -1010,6 +1010,11 @@ Subarray Subarray::get_subarray(uint64_t start, uint64_t end) const {
   return ret;
 }
 
+void Subarray::remove_label_ranges() {
+  label_range_subset_.clear();
+  label_range_subset_.resize(array_->array_schema_latest().dim_num(), nullopt);
+}
+
 bool Subarray::has_label_ranges() const {
   return std::any_of(
       label_range_subset_.cbegin(),

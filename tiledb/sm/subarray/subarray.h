@@ -871,6 +871,11 @@ class Subarray {
   bool has_label_ranges(const uint32_t dim_index) const;
 
   /**
+   * Removes all label ranges from the subarray.
+   */
+  void remove_label_ranges();
+
+  /**
    * Set default indicator for dimension subarray. Used by serialization only
    * @param dim_index
    * @param is_default
