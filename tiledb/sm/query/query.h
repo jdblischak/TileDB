@@ -59,6 +59,7 @@ namespace tiledb {
 namespace sm {
 
 class Array;
+class DimensionLabelQueries;
 class StorageManager;
 
 enum class QueryStatus : uint8_t;
@@ -1026,6 +1027,9 @@ class Query {
 
   /** Maps label names to their buffers. */
   std::unordered_map<std::string, QueryBuffer> label_buffers_;
+
+  /** Dimension label queries that are part of the main query. */
+  tdb_unique_ptr<DimensionLabelQueries> dim_label_queries_;
 
   /** Keeps track of the coords data. */
   CoordsInfo coords_info_;

@@ -71,16 +71,25 @@ DimensionLabelQueries::DimensionLabelQueries(
           array_buffers,
           fragment_name);
       break;
+    case (QueryType::DELETE):
+    case (QueryType::UPDATE):
+    case (QueryType::MODIFY_EXCLUSIVE):
+      if (!label_buffers.empty() || subarray.has_label_ranges()) {
+        throw StatusException(Status_DimensionLabelQueryError(
+            "Failed to add dimension label queries. Query type " +
+            query_type_str(array->get_query_type()) +
+            " is not supported for dimension labels."));
+      }
+      break;
     default:
       throw StatusException(Status_DimensionLabelQueryError(
-          "Failed toadd dimension label queries. Query type " +
-          query_type_str(array->get_query_type()) +
-          " is not supported for dimension labels."));
+          "Failed to add dimension label queries. Unknown query type " +
+          query_type_str(array->get_query_type()) + "."));
   }
 }
 
 void DimensionLabelQueries::cancel() {
-  for (auto& [label_name, query] : range_queries_) {
+  for (auto& [label_name, query] : range_queries_map_) {
     query->cancel();
   }
   for (auto& [label_name, query] : data_queries_) {
@@ -89,7 +98,7 @@ void DimensionLabelQueries::cancel() {
 }
 
 void DimensionLabelQueries::finalize() {
-  for (auto& [label_name, query] : range_queries_) {
+  for (auto& [label_name, query] : range_queries_map_) {
     query->finalize();
   }
   for (auto& [label_name, query] : data_queries_) {
@@ -106,7 +115,7 @@ void DimensionLabelQueries::process_data_queries() {
 
 void DimensionLabelQueries::process_range_queries() {
   // TODO: Parallel?
-  for (auto& [label_name, query] : range_queries_) {
+  for (auto& [label_name, query] : range_queries_map_) {
     query->process();
   }
 }
@@ -119,7 +128,7 @@ void DimensionLabelQueries::add_data_queries_for_read(
   for (const auto& [label_name, label_buffer] : label_buffers) {
     // Skip adding a new query if this dimension label was already used to
     // add a range query above.
-    if (range_queries_.find(label_name) != range_queries_.end()) {
+    if (range_queries_map_.find(label_name) != range_queries_map_.end()) {
       continue;
     }
 
@@ -161,7 +170,7 @@ void DimensionLabelQueries::add_data_queries_for_write(
   for (const auto& [label_name, label_buffer] : label_buffers) {
     // Skip adding a new query if this dimension label was already used to
     // add a range query above.
-    if (range_queries_.find(label_name) != range_queries_.end()) {
+    if (range_queries_map_.find(label_name) != range_queries_map_.end()) {
       continue;
     }
 
@@ -300,7 +309,7 @@ void DimensionLabelQueries::add_range_queries(
             true);
 
         // Add the query.
-        range_queries_[dim_label_ref.name()] =
+        range_queries_map_[dim_label_ref.name()] =
             tdb_unique_ptr<DimensionLabelRangeQuery>(tdb_new(
                 DimensionLabelRangeQuery,
                 dim_label,
@@ -328,6 +337,7 @@ void DimensionLabelQueries::add_range_queries(
             "'; Dimension label order " +
             label_order_str(dim_label_ref.label_order()) + " not supported."));
     }
+    range_queries_[dim_idx] = range_queries_map_[dim_label_ref.name()].get();
   }
 }
 

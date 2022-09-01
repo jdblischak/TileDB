@@ -42,6 +42,7 @@
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/parse_argument.h"
 #include "tiledb/sm/query/deletes_and_updates/deletes.h"
+#include "tiledb/sm/query/dimension_label/dimension_label_queries.h"
 #include "tiledb/sm/query/legacy/reader.h"
 #include "tiledb/sm/query/query_condition.h"
 #include "tiledb/sm/query/readers/dense_reader.h"
@@ -83,6 +84,7 @@ Query::Query(
     , storage_manager_(storage_manager)
     , stats_(storage_manager_->stats()->create_child("Query"))
     , logger_(storage_manager->logger()->clone("Query", ++logger_id_))
+    , dim_label_queries_(nullptr)
     , has_coords_buffer_(false)
     , has_zipped_coords_buffer_(false)
     , coord_buffer_is_set_(false)
@@ -1100,6 +1102,18 @@ Status Query::init() {
     }
 
     RETURN_NOT_OK(check_buffer_names());
+
+    dim_label_queries_ = tdb_unique_ptr<DimensionLabelQueries>(tdb_new(
+        DimensionLabelQueries,
+        storage_manager_,
+        array_,
+        subarray_,
+        label_buffers_,
+        buffers_,
+        fragment_name_));
+
+    /** TODO: Check if strategy needs subarray and so needs to be reinitialized
+     * for queries with label ranges. */
     RETURN_NOT_OK(create_strategy());
   }
 

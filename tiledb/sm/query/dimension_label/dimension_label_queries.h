@@ -66,6 +66,18 @@ inline Status Status_DimensionLabelQueryError(const std::string& msg) {
 
 class DimensionLabelQueries {
  public:
+  /**
+   * Size type for the number of dimensions of an array and for dimension
+   * indices.
+   *
+   * Note: This should be the same as `Domain::dimension_size_type`. We're
+   * not including `domain.h`, otherwise we'd use that definition here.
+   */
+  using dimension_size_type = unsigned int;
+
+  /** TODO */
+  using range_size_type = uint64_t;
+
   /** Default constructor is not C.41 compliant. */
   DimensionLabelQueries() = delete;
 
@@ -84,17 +96,35 @@ class DimensionLabelQueries {
 
   void cancel();
   void finalize();
+
+  inline bool has_label_ranges(dimension_size_type dim_idx) const {
+    return range_queries_[dim_idx] != nullptr;
+  }
+
+  /**
+   * TODO: finish docs.
+   *
+   * @return [is_point_range, start, count]
+   */
+  inline tuple<bool, const void*, range_size_type> index_ranges(
+      dimension_size_type dim_idx) const {
+    return range_queries_[dim_idx]->index_ranges();
+  }
+
+  /** TODO: docs */
   void process_data_queries();
+
+  /** TODO: docs */
   void process_range_queries();
 
   /** TODO: docs */
-  DimensionLabel* open_dimension_label(
-      StorageManager* storage_manager,
-      Array* array,
-      const DimensionLabelReference& dim_label_ref,
-      const QueryType& query_type,
-      const bool open_indexed_array,
-      const bool open_labelled_array);
+  inline QueryStatus status_range_query(dimension_size_type dim_idx) const {
+    if (range_queries_[dim_idx]) {
+      return range_queries_[dim_idx]->status();
+    }
+    throw StatusException(Status_DimensionLabelQueryError(
+        "No range query set on dimension " + std::to_string(dim_idx)));
+  }
 
  private:
   /** TODO: docs */
@@ -103,7 +133,10 @@ class DimensionLabelQueries {
 
   /** TODO: docs */
   std::unordered_map<std::string, tdb_unique_ptr<DimensionLabelRangeQuery>>
-      range_queries_;
+      range_queries_map_;
+
+  /** TODO: docs */
+  std::vector<DimensionLabelRangeQuery*> range_queries_;
 
   /** TODO: docs */
   std::unordered_map<std::string, tdb_unique_ptr<DimensionLabelDataQuery>>
@@ -132,6 +165,15 @@ class DimensionLabelQueries {
       const Subarray& subarray,
       const std::unordered_map<std::string, QueryBuffer>& label_buffers,
       const std::unordered_map<std::string, QueryBuffer>& array_buffers);
+
+  /** TODO: docs */
+  DimensionLabel* open_dimension_label(
+      StorageManager* storage_manager,
+      Array* array,
+      const DimensionLabelReference& dim_label_ref,
+      const QueryType& query_type,
+      const bool open_indexed_array,
+      const bool open_labelled_array);
 };
 
 }  // namespace tiledb::sm

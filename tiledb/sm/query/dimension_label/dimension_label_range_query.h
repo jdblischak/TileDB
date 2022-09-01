@@ -88,6 +88,17 @@ class DimensionLabelRangeQuery {
     return computed_index_range_;
   }
 
+  /**
+   * TODO: Add docs
+   */
+  inline tuple<bool, const void*, uint64_t> index_ranges() {
+    if (status_ != QueryStatus::COMPLETED) {
+      throw StatusException(
+          Status_RangeQueryError("Failed to compute index ranges."));
+    }
+    return {false, computed_index_range_.data(), 1};
+  }
+
   /** Returns the status of the query. */
   inline QueryStatus status() const {
     return status_;
