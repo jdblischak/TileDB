@@ -96,7 +96,11 @@ class DimensionLabelRangeQuery {
       throw StatusException(
           Status_RangeQueryError("Failed to compute index ranges."));
     }
-    return {false, computed_index_range_.data(), 1};
+    if (computed_index_range_.empty()) {
+      return {false, nullptr, 0};
+    } else {
+      return {false, computed_index_range_.data(), 1};
+    }
   }
 
   /** Returns the status of the query. */

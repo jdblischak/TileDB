@@ -113,10 +113,70 @@ void DimensionLabelQueries::process_data_queries() {
   }
 }
 
-void DimensionLabelQueries::process_range_queries() {
+void DimensionLabelQueries::process_range_queries(Subarray& subarray) {
   // TODO: Parallel?
   for (auto& [label_name, query] : range_queries_map_) {
     query->process();
+  }
+
+  // TODO: Do something smart for throwing errors and setting ranges.
+  // Update the subarray.
+  for (dimension_size_type dim_idx{0}; dim_idx < subarray.dim_num();
+       ++dim_idx) {
+    const auto& range_query = range_queries_[dim_idx];
+
+    // Continue to next dimension index if no range query.
+    if (!range_query) {
+      continue;
+    }
+
+    if (range_query->status() != QueryStatus::COMPLETED) {
+      range_query_status_ = QueryStatus::FAILED;
+      // TODO: Allow incomplete and push up failed reason for acutal failed
+      // queries.
+      return;
+    }
+
+    // Get pointer to ranges from range query.
+    auto [is_point_ranges, range_start, count] = range_query->index_ranges();
+
+    // Continue if there is no ranges.
+    // TODO: Special logic for empty range?
+    if (count == 0) {
+      continue;
+    }
+
+    Status st = Status::Ok();
+    // Add ranges to subarray.
+    if (is_point_ranges) {
+      st = subarray.add_point_ranges(dim_idx, range_start, count);
+    } else {
+      // TODO: Before merge rebase to use new method for bulk adding ranges
+      if (count != 1) {
+        auto range_size = 2 * subarray.array()
+                                  ->array_schema_latest()
+                                  .dimension_ptr(dim_idx)
+                                  ->coord_size();
+        for (uint64_t range_idx{0}; range_idx < count; ++range_idx) {
+          const auto* start =
+              static_cast<const uint8_t*>(range_start) + range_idx * range_size;
+          const auto* end = static_cast<const uint8_t*>(range_start) +
+                            (range_idx + 1) * range_size;
+          st = subarray.add_range(dim_idx, start, end, nullptr);
+          if (!st.ok()) {
+            break;
+          }
+        }
+      }
+    }
+    if (!st.ok()) {
+      range_query_status_ = QueryStatus::FAILED;
+      throw StatusException(st);
+    }
+
+    // TODO: Store completion of individual ranges and skip over them once
+    // subarray is successfully update. If subarray is unsucessfully updated,
+    // remove ranges.
   }
 }
 
@@ -135,7 +195,8 @@ void DimensionLabelQueries::add_data_queries_for_read(
     // Get the dimension label reference from the array.
     const auto& dim_label_ref =
         array->array_schema_latest().dimension_label_reference(label_name);
-    // TODO: Ensure label order type is valid with ensure_label_order_is_valid.
+    // TODO: Ensure label order type is valid with
+    // ensure_label_order_is_valid.
 
     // Open the indexed array.
     auto* dim_label = open_dimension_label(
@@ -217,8 +278,7 @@ void DimensionLabelQueries::add_data_queries_for_write(
         if (!subarray.is_default(dim_label_ref.dimension_id())) {
           throw StatusException(Status_DimensionLabelQueryError(
               "Failed to create dimension label query. Currently dimension "
-              "labels "
-              "only support writing the full array."));
+              "labels only support writing the full array."));
         }
         // TODO: Check sort
         // TODO: CHeck full array

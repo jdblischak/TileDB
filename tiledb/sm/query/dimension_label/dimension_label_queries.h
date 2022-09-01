@@ -94,36 +94,29 @@ class DimensionLabelQueries {
   DISABLE_COPY_AND_COPY_ASSIGN(DimensionLabelQueries);
   DISABLE_MOVE_AND_MOVE_ASSIGN(DimensionLabelQueries);
 
+  /** TODO: docs */
   void cancel();
+
+  /** TODO: docs */
   void finalize();
 
-  inline bool has_label_ranges(dimension_size_type dim_idx) const {
+  /** TODO: docs */
+  inline bool has_range_query(dimension_size_type dim_idx) const {
     return range_queries_[dim_idx] != nullptr;
-  }
-
-  /**
-   * TODO: finish docs.
-   *
-   * @return [is_point_range, start, count]
-   */
-  inline tuple<bool, const void*, range_size_type> index_ranges(
-      dimension_size_type dim_idx) const {
-    return range_queries_[dim_idx]->index_ranges();
   }
 
   /** TODO: docs */
   void process_data_queries();
 
-  /** TODO: docs */
-  void process_range_queries();
+  /** TODO: docs
+   *
+   * Updates subarray with data.
+   **/
+  void process_range_queries(Subarray& subarray);
 
   /** TODO: docs */
-  inline QueryStatus status_range_query(dimension_size_type dim_idx) const {
-    if (range_queries_[dim_idx]) {
-      return range_queries_[dim_idx]->status();
-    }
-    throw StatusException(Status_DimensionLabelQueryError(
-        "No range query set on dimension " + std::to_string(dim_idx)));
+  inline QueryStatus range_query_status() {
+    return range_query_status_;
   }
 
  private:
@@ -141,6 +134,9 @@ class DimensionLabelQueries {
   /** TODO: docs */
   std::unordered_map<std::string, tdb_unique_ptr<DimensionLabelDataQuery>>
       data_queries_;
+
+  /** TODO: docs */
+  QueryStatus range_query_status_;
 
   /** TODO: docs */
   void add_data_queries_for_read(

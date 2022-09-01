@@ -1103,6 +1103,7 @@ Status Query::init() {
 
     RETURN_NOT_OK(check_buffer_names());
 
+    // Create the dimension label queries. Remove label ranges from subarray.
     dim_label_queries_ = tdb_unique_ptr<DimensionLabelQueries>(tdb_new(
         DimensionLabelQueries,
         storage_manager_,
@@ -1111,10 +1112,13 @@ Status Query::init() {
         label_buffers_,
         buffers_,
         fragment_name_));
+    subarray_.remove_label_ranges();
 
-    /** TODO: Check if strategy needs subarray and so needs to be reinitialized
-     * for queries with label ranges. */
+    // Create the query strategy if possible. May need to wait for range queries
+    // to complete and the subarray is updated.
+    // if (dim_label_queries_->range_query_status() == QueryStatus::COMPLETED) {
     RETURN_NOT_OK(create_strategy());
+    // }
   }
 
   status_ = QueryStatus::INPROGRESS;
@@ -1167,6 +1171,35 @@ Status Query::process() {
         Status_QueryError("Cannot process query; Query is not initialized"));
   status_ = QueryStatus::INPROGRESS;
 
+  // Check if we need to process label ranges and update subarray before
+  // continuing to the main query.
+  if (dim_label_queries_->range_query_status() == QueryStatus::INPROGRESS) {
+    // Process the dimension label queries.
+    // TODO: Catch and re-throw errors for better error messages.
+    // TODO: Get detailed failed reason back to user.
+    dim_label_queries_->process_range_queries(subarray_);
+
+    // The dimension label query did not complete. For now, we are failing on
+    // this step. In the future, this may be updated to allow incomplete
+    // dimension label queries.
+    if (dim_label_queries_->range_query_status() != QueryStatus::COMPLETED) {
+      status_ = QueryStatus::FAILED;
+      return logger_->status(
+          Status_QueryError("Cannot process query; Failed to read data from "
+                            "dimension label ranges."));
+    }
+
+    // TODO: Check if the subarray has an empty element and return successful
+    // query with no resulting data.
+
+    // Label queries are completed and the subarray is fully updated. We can
+    // create the query strategy now.
+    RETURN_NOT_OK(create_strategy());
+  }
+
+  // Update query status.
+  status_ = QueryStatus::INPROGRESS;
+
   // Process query
   Status st = strategy_->dowork();
 
@@ -1187,6 +1220,8 @@ Status Query::process() {
 
   // Check if the query is complete
   bool completed = !strategy_->incomplete();
+
+  // TODO: Add in logic for in the dimension label query is not complete.
 
   // Handle callback and status
   if (completed) {
@@ -1857,8 +1892,8 @@ void Query::set_label_offsets_buffer(
     uint64_t coords_num =
         *buffer_offsets_size / constants::cell_var_offset_size;
     if (coord_offsets_buffer_is_set_ &&
-        coords_num != coords_info_.coords_num_ && name == offsets_buffer_name_)
-      return logger_->status(Status_QueryError(
+        coords_num != coords_info_.coords_num_ && name ==
+  offsets_buffer_name_) return logger_->status(Status_QueryError(
           std::string("Cannot set buffer; Input buffer for dimension '") +
           name +
           "' has a different number of coordinates than previously "
@@ -2545,6 +2580,7 @@ Status Query::submit() {
     if (status_ == QueryStatus::UNINITIALIZED) {
       RETURN_NOT_OK(create_strategy());
     }
+    // TODO Does dim label need to be added here or will it be handled on rest?
     return rest_client->submit_query_to_rest(array_->array_uri(), this);
   }
   RETURN_NOT_OK(init());
