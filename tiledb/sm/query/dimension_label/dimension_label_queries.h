@@ -53,6 +53,7 @@ class StorageManager;
 class Subarray;
 
 enum class QueryType : uint8_t;
+enum class QueryStatus : uint8_t;
 
 /**
  * Return a Status_DimensionQueryError error class Status with a given
@@ -115,7 +116,7 @@ class DimensionLabelQueries {
   void process_range_queries(Subarray& subarray);
 
   /** TODO: docs */
-  inline QueryStatus range_query_status() {
+  inline QueryStatus range_query_status() const {
     return range_query_status_;
   }
 

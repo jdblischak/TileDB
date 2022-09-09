@@ -1104,21 +1104,28 @@ Status Query::init() {
     RETURN_NOT_OK(check_buffer_names());
 
     // Create the dimension label queries. Remove label ranges from subarray.
-    dim_label_queries_ = tdb_unique_ptr<DimensionLabelQueries>(tdb_new(
-        DimensionLabelQueries,
-        storage_manager_,
-        array_,
-        subarray_,
-        label_buffers_,
-        buffers_,
-        fragment_name_));
-    subarray_.remove_label_ranges();
+    // TODO: Decide if the dimension label query object should be created
+    // whether or not there are dimension labels.
+    // TODO: Throw capnp serialization error if the dimension label query object
+    // exists.
+    if (!label_buffers_.empty() || subarray_.has_label_ranges()) {
+      dim_label_queries_ = tdb_unique_ptr<DimensionLabelQueries>(tdb_new(
+          DimensionLabelQueries,
+          storage_manager_,
+          array_,
+          subarray_,
+          label_buffers_,
+          buffers_,
+          fragment_name_));
+      subarray_.remove_label_ranges();
+    }
 
     // Create the query strategy if possible. May need to wait for range queries
     // to complete and the subarray is updated.
-    // if (dim_label_queries_->range_query_status() == QueryStatus::COMPLETED) {
-    RETURN_NOT_OK(create_strategy());
-    // }
+    if (!dim_label_queries_ ||
+        dim_label_queries_->range_query_status() == QueryStatus::COMPLETED) {
+      RETURN_NOT_OK(create_strategy());
+    }
   }
 
   status_ = QueryStatus::INPROGRESS;
@@ -1173,7 +1180,8 @@ Status Query::process() {
 
   // Check if we need to process label ranges and update subarray before
   // continuing to the main query.
-  if (dim_label_queries_->range_query_status() == QueryStatus::INPROGRESS) {
+  if (dim_label_queries_ &&
+      dim_label_queries_->range_query_status() != QueryStatus::COMPLETED) {
     // Process the dimension label queries.
     // TODO: Catch and re-throw errors for better error messages.
     // TODO: Get detailed failed reason back to user.

@@ -52,7 +52,8 @@ DimensionLabelQueries::DimensionLabelQueries(
     const Subarray& subarray,
     const std::unordered_map<std::string, QueryBuffer>& label_buffers,
     const std::unordered_map<std::string, QueryBuffer>& array_buffers,
-    optional<std::string> fragment_name) {
+    optional<std::string> fragment_name)
+    : range_query_status_{QueryStatus::UNINITIALIZED} {
   switch (array->get_query_type()) {
     case (QueryType::READ):
       add_range_queries(
@@ -86,6 +87,8 @@ DimensionLabelQueries::DimensionLabelQueries(
           "Failed to add dimension label queries. Unknown query type " +
           query_type_str(array->get_query_type()) + "."));
   }
+  range_query_status_ =
+      range_queries_.empty() ? QueryStatus::COMPLETED : QueryStatus::INPROGRESS;
 }
 
 void DimensionLabelQueries::cancel() {
@@ -178,6 +181,7 @@ void DimensionLabelQueries::process_range_queries(Subarray& subarray) {
     // subarray is successfully update. If subarray is unsucessfully updated,
     // remove ranges.
   }
+  range_query_status_ = QueryStatus::COMPLETED;
 }
 
 void DimensionLabelQueries::add_data_queries_for_read(
