@@ -95,7 +95,7 @@ void write_dimension_label(
     REQUIRE(query.status() == QueryStatus::COMPLETED);
   }
 
-  // Read labelled array.
+  // Write labelled array.
   {
     Query query{
         ctx->storage_manager(),
