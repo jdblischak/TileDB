@@ -34,6 +34,7 @@
 #ifndef TILEDB_TEST_EXPERIMENTAL_HELPERS_H
 #define TILEDB_TEST_EXPERIMENTAL_HELPERS_H
 
+#include "catch.hpp"
 #include "helpers.h"
 #include "tiledb/api/c_api/context/context_api_internal.h"
 #include "tiledb/sm/c_api/experimental/tiledb_dimension_label.h"
@@ -41,6 +42,8 @@
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/c_api/tiledb_experimental.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
+
+namespace tiledb::test {
 
 /**
  * Helper method for adding an internal dimension label to an array schema.
@@ -62,5 +65,7 @@ void add_dimension_label(
     optional<std::pair<tiledb_filter_type_t, int>> index_filters = nullopt,
     optional<uint64_t> capacity = nullopt,
     optional<bool> allows_dups = nullopt);
+
+}  // namespace tiledb::test
 
 #endif

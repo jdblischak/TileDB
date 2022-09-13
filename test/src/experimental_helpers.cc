@@ -78,7 +78,7 @@ void add_dimension_label(
 
   // Add the dimension label to the array schema.
   REQUIRE_TILEDB_OK(tiledb_array_schema_add_dimension_label(
-      ctx, array_schema, dim_idx, label_name, dim_label_schema));
+      ctx, array_schema, dim_idx, label_name.c_str(), dim_label_schema));
   tiledb_dimension_label_schema_free(&dim_label_schema);
 }
 
