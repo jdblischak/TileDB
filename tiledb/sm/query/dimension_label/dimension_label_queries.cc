@@ -243,19 +243,21 @@ void DimensionLabelQueries::add_data_queries_for_write(
     const auto& dim_label_ref =
         array->array_schema_latest().dimension_label_reference(label_name);
 
-    // Open the indexed array.
+    // Open both arrays in the dimension label.
     auto* dim_label = open_dimension_label(
-        storage_manager, array, dim_label_ref, QueryType::READ, true, false);
+        storage_manager, array, dim_label_ref, QueryType::WRITE, true, true);
+
     // Create the data query.
     data_queries_[label_name] = tdb_unique_ptr<DimensionLabelDataQuery>(tdb_new(
         DimensionLabelDataQuery,
         storage_manager,
         dim_label,
         true,
-        false,
+        true,
         fragment_name));
-    auto& labelled_array_query = data_queries_[label_name]->indexed_array_query;
-    auto& indexed_array_query = data_queries_[label_name]->labelled_array_query;
+    auto& labelled_array_query =
+        data_queries_[label_name]->labelled_array_query;
+    auto& indexed_array_query = data_queries_[label_name]->indexed_array_query;
 
     // Get the index_buffer from the array buffers.
     const auto& dim_name = array->array_schema_latest()

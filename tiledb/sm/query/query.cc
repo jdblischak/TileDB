@@ -1211,6 +1211,11 @@ Status Query::process() {
   // Process query
   Status st = strategy_->dowork();
 
+  // Process dimension label queries
+  if (dim_label_queries_) {
+    dim_label_queries_->process_data_queries();
+  }
+
   // Handle error
   if (!st.ok()) {
     status_ = QueryStatus::FAILED;
@@ -1316,6 +1321,7 @@ Status Query::check_buffer_names() {
                              "cells to be written"));
 
     // All attributes/dimensions must be provided
+    // TODO: How to handle when writing to dimension labels?
     auto expected_num = array_schema_->attribute_num();
     expected_num += static_cast<decltype(expected_num)>(
         buffers_.count(constants::timestamps));
@@ -1716,6 +1722,7 @@ Status Query::set_data_buffer(
         "'"));
   }
 
+  // TODO How to handle this for writing to dense dimension labels?
   if (array_schema_->dense() &&
       (type_ == QueryType::WRITE || type_ == QueryType::MODIFY_EXCLUSIVE) &&
       !is_attr) {
