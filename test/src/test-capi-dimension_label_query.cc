@@ -57,88 +57,92 @@
 using namespace tiledb::sm;
 using namespace tiledb::test;
 
-TEST_CASE_METHOD(
-    TemporaryDirectoryFixture,
-    "Write ordered dimension label data",
-    "[capi][query][DimensionLabel]") {
-  // Create an array schema
-  uint64_t x_domain[2]{0, 3};
-  uint64_t x_tile_extent{4};
-  auto array_schema = create_array_schema(
-      ctx,
-      TILEDB_SPARSE,
-      {"x"},
-      {TILEDB_UINT64},
-      {&x_domain[0]},
-      {&x_tile_extent},
-      {"a"},
-      {TILEDB_FLOAT64},
-      {1},
-      {tiledb::test::Compressor(TILEDB_FILTER_NONE, -1)},
-      TILEDB_ROW_MAJOR,
-      TILEDB_ROW_MAJOR,
-      4096,
-      false);
-
-  // Add dimension label.
-  double label_domain[] = {-1.0, 1.0};
-  double label_tile_extent = 2.0;
-  {
-    tiledb_dimension_label_schema_t* dim_label_schema;
-    REQUIRE_TILEDB_OK(tiledb_dimension_label_schema_alloc(
+/**
+ * Create a small sparse array with a dimension label.
+ *
+ */
+class SparseArrayExample1 : public TemporaryDirectoryFixture {
+ public:
+  SparseArrayExample1() {
+    // Create an array schema
+    uint64_t x_domain[2]{0, 3};
+    uint64_t x_tile_extent{4};
+    auto array_schema = create_array_schema(
         ctx,
-        TILEDB_INCREASING_LABELS,
-        TILEDB_UINT64,
-        x_domain,
-        &x_tile_extent,
-        TILEDB_FLOAT64,
-        &label_domain[0],
-        &label_tile_extent,
-        &dim_label_schema));
+        TILEDB_SPARSE,
+        {"x"},
+        {TILEDB_UINT64},
+        {&x_domain[0]},
+        {&x_tile_extent},
+        {"a"},
+        {TILEDB_FLOAT64},
+        {1},
+        {tiledb::test::Compressor(TILEDB_FILTER_NONE, -1)},
+        TILEDB_ROW_MAJOR,
+        TILEDB_ROW_MAJOR,
+        4096,
+        false);
 
-    REQUIRE_TILEDB_OK(tiledb_array_schema_add_dimension_label(
-        ctx, array_schema, 0, "x", dim_label_schema));
-    tiledb_dimension_label_schema_free(&dim_label_schema);
+    // Add dimension label.
+    double label_domain[] = {-1.0, 1.0};
+    double label_tile_extent = 2.0;
+    {
+      tiledb_dimension_label_schema_t* dim_label_schema;
+      REQUIRE_TILEDB_OK(tiledb_dimension_label_schema_alloc(
+          ctx,
+          TILEDB_INCREASING_LABELS,
+          TILEDB_UINT64,
+          x_domain,
+          &x_tile_extent,
+          TILEDB_FLOAT64,
+          &label_domain[0],
+          &label_tile_extent,
+          &dim_label_schema));
 
-    // Check array schema and number of dimension labels.
-    REQUIRE_TILEDB_OK(tiledb_array_schema_check(ctx, array_schema));
-    auto dim_label_num = array_schema->array_schema_->dim_label_num();
-    REQUIRE(dim_label_num == 1);
+      REQUIRE_TILEDB_OK(tiledb_array_schema_add_dimension_label(
+          ctx, array_schema, 0, "x", dim_label_schema));
+      tiledb_dimension_label_schema_free(&dim_label_schema);
+
+      // Check array schema and number of dimension labels.
+      REQUIRE_TILEDB_OK(tiledb_array_schema_check(ctx, array_schema));
+      auto dim_label_num = array_schema->array_schema_->dim_label_num();
+      REQUIRE(dim_label_num == 1);
+    }
+
+    // Create array
+    array_name = create_temporary_array("array_with_label_1", array_schema);
+    tiledb_array_schema_free(&array_schema);
   }
 
-  // Create array
-  auto array_name = create_temporary_array("array_with_label_1", array_schema);
-  tiledb_array_schema_free(&array_schema);
-
-  // Input data.
-  std::vector<uint64_t> input_index_data{0, 1, 2, 3};
-  uint64_t index_data_size{input_index_data.size() * sizeof(uint64_t)};
-  std::vector<double> input_label_data{-1.0, 0.0, 0.5, 1.0};
-  uint64_t label_data_size{input_label_data.size() * sizeof(double)};
-  std::vector<double> input_attr_data{0.5, 1.0, 1.5, 2.0};
-  uint64_t attr_data_size{input_attr_data.size() * sizeof(double)};
-
-  {
+  void write_array_with_label(
+      std::vector<uint64_t>& input_index_data,
+      std::vector<double>& input_attr_data,
+      std::vector<double>& input_label_data) {
     // Open array for writing.
     tiledb_array_t* array;
-    REQUIRE_TILEDB_OK(tiledb_array_alloc(ctx, array_name.c_str(), &array));
-    REQUIRE_TILEDB_OK(tiledb_array_open(ctx, array, TILEDB_WRITE));
+    require_tiledb_ok(tiledb_array_alloc(ctx, array_name.c_str(), &array));
+    require_tiledb_ok(tiledb_array_open(ctx, array, TILEDB_WRITE));
+
+    // Define sizes for setting buffers.
+    uint64_t index_data_size{input_index_data.size() * sizeof(uint64_t)};
+    uint64_t attr_data_size{input_attr_data.size() * sizeof(double)};
+    uint64_t label_data_size{input_label_data.size() * sizeof(double)};
 
     // Create write query.
     tiledb_query_t* query;
-    REQUIRE_TILEDB_OK(tiledb_query_alloc(ctx, array, TILEDB_WRITE, &query));
-    REQUIRE_TILEDB_OK(tiledb_query_set_layout(ctx, query, TILEDB_UNORDERED));
-    REQUIRE_TILEDB_OK(tiledb_query_set_label_data_buffer(
-        ctx, query, "x", input_label_data.data(), &label_data_size));
-    REQUIRE_TILEDB_OK(tiledb_query_set_data_buffer(
+    require_tiledb_ok(tiledb_query_alloc(ctx, array, TILEDB_WRITE, &query));
+    require_tiledb_ok(tiledb_query_set_layout(ctx, query, TILEDB_UNORDERED));
+    require_tiledb_ok(tiledb_query_set_data_buffer(
         ctx, query, "x", input_index_data.data(), &index_data_size));
-    REQUIRE_TILEDB_OK(tiledb_query_set_data_buffer(
+    require_tiledb_ok(tiledb_query_set_data_buffer(
         ctx, query, "a", input_attr_data.data(), &attr_data_size));
+    require_tiledb_ok(tiledb_query_set_label_data_buffer(
+        ctx, query, "x", input_label_data.data(), &label_data_size));
 
     // Submit write query.
-    REQUIRE_TILEDB_OK(tiledb_query_submit(ctx, query));
+    require_tiledb_ok(tiledb_query_submit(ctx, query));
     tiledb_query_status_t query_status;
-    REQUIRE_TILEDB_OK(tiledb_query_get_status(ctx, query, &query_status));
+    require_tiledb_ok(tiledb_query_get_status(ctx, query, &query_status));
     REQUIRE(query_status == TILEDB_COMPLETED);
 
     // Clean-up.
@@ -146,35 +150,55 @@ TEST_CASE_METHOD(
     tiledb_array_free(&array);
   }
 
+ protected:
+  std::string array_name;
+
+  /** Valid range for the index. */
+  constexpr static uint64_t dim_domain[2]{0, 3};
+
+  /** Valid range for the label. */
+  constexpr static double label_domain[2]{-1, 1};
+};
+
+TEST_CASE_METHOD(
+    SparseArrayExample1,
+    "Write ordered dimension label data",
+    "[capi][query][DimensionLabel]") {
+  // Input data.
+  std::vector<uint64_t> input_index_data{0, 1, 2, 3};
+  std::vector<double> input_label_data{-1.0, 0.0, 0.5, 1.0};
+  std::vector<double> input_attr_data{0.5, 1.0, 1.5, 2.0};
+
+  write_array_with_label(input_index_data, input_attr_data, input_label_data);
   // Read indexed array
   {
     // Define output data.
     std::vector<double> label_data(4, 0.0);
-    label_data_size = label_data.size() * sizeof(double);
+    uint64_t label_data_size{label_data.size() * sizeof(double)};
 
     // Open array.
     tiledb_array_t* array;
-    REQUIRE_TILEDB_OK(tiledb_array_alloc(
+    require_tiledb_ok(tiledb_array_alloc(
         ctx, "tiledb_test/array_with_label_1/__labels/l0/indexed", &array));
-    REQUIRE_TILEDB_OK(tiledb_array_open(ctx, array, TILEDB_READ));
+    require_tiledb_ok(tiledb_array_open(ctx, array, TILEDB_READ));
 
     // Create subarray.
     tiledb_subarray_t* subarray;
-    REQUIRE_TILEDB_OK(tiledb_subarray_alloc(ctx, array, &subarray));
-    REQUIRE_TILEDB_OK(tiledb_subarray_add_range(
-        ctx, subarray, 0, &x_domain[0], &x_domain[1], nullptr));
+    require_tiledb_ok(tiledb_subarray_alloc(ctx, array, &subarray));
+    require_tiledb_ok(tiledb_subarray_add_range(
+        ctx, subarray, 0, &dim_domain[0], &dim_domain[1], nullptr));
 
     // Create query.
     tiledb_query_t* query;
-    REQUIRE_TILEDB_OK(tiledb_query_alloc(ctx, array, TILEDB_READ, &query));
-    REQUIRE_TILEDB_OK(tiledb_query_set_subarray_t(ctx, query, subarray));
-    REQUIRE_TILEDB_OK(tiledb_query_set_data_buffer(
+    require_tiledb_ok(tiledb_query_alloc(ctx, array, TILEDB_READ, &query));
+    require_tiledb_ok(tiledb_query_set_subarray_t(ctx, query, subarray));
+    require_tiledb_ok(tiledb_query_set_data_buffer(
         ctx, query, "label", label_data.data(), &label_data_size));
 
     // Submit query.
-    REQUIRE_TILEDB_OK(tiledb_query_submit(ctx, query));
+    require_tiledb_ok(tiledb_query_submit(ctx, query));
     tiledb_query_status_t query_status;
-    REQUIRE_TILEDB_OK(tiledb_query_get_status(ctx, query, &query_status));
+    require_tiledb_ok(tiledb_query_get_status(ctx, query, &query_status));
     REQUIRE(query_status == TILEDB_COMPLETED);
 
     // Clean-up.
@@ -192,9 +216,9 @@ TEST_CASE_METHOD(
   {
     // Define output data.
     std::vector<double> label_data(4, 0.0);
-    label_data_size = label_data.size() * sizeof(double);
+    uint64_t label_data_size{label_data.size() * sizeof(double)};
     std::vector<uint64_t> index_data(4, 0.0);
-    index_data_size = index_data.size() * sizeof(uint64_t);
+    uint64_t index_data_size{index_data.size() * sizeof(uint64_t)};
     // Open array.
     tiledb_array_t* array;
     REQUIRE_TILEDB_OK(tiledb_array_alloc(
