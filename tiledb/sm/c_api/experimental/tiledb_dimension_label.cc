@@ -44,7 +44,7 @@ namespace tiledb::common::detail {
 int32_t tiledb_array_schema_add_dimension_label(
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
-    uint32_t dim_id,
+    const uint32_t dim_id,
     const char* name,
     tiledb_dimension_label_schema_t* dim_label_schema) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array_schema) ||
@@ -283,7 +283,7 @@ int32_t tiledb_subarray_get_label_range_var_size(
 int32_t tiledb_array_schema_add_dimension_label(
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
-    uint32_t dim_id,
+    const uint32_t dim_id,
     const char* name,
     tiledb_dimension_label_schema_t* dim_label_schema) noexcept {
   return api_entry<detail::tiledb_array_schema_add_dimension_label>(

@@ -78,7 +78,7 @@ typedef struct tiledb_dimension_label_schema_t tiledb_dimension_label_schema_t;
 TILEDB_EXPORT int32_t tiledb_array_schema_add_dimension_label(
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
-    uint32_t dim_id,
+    const uint32_t dim_id,
     const char* name,
     tiledb_dimension_label_schema_t* dim_label_schema) TILEDB_NOEXCEPT;
 
