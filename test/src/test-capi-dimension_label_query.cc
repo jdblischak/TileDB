@@ -84,31 +84,18 @@ class SparseArrayExample1 : public TemporaryDirectoryFixture {
         false);
 
     // Add dimension label.
-    double label_domain[] = {-1.0, 1.0};
     double label_tile_extent = 2.0;
-    {
-      tiledb_dimension_label_schema_t* dim_label_schema;
-      REQUIRE_TILEDB_OK(tiledb_dimension_label_schema_alloc(
-          ctx,
-          TILEDB_INCREASING_LABELS,
-          TILEDB_UINT64,
-          x_domain,
-          &x_tile_extent,
-          TILEDB_FLOAT64,
-          &label_domain[0],
-          &label_tile_extent,
-          &dim_label_schema));
-
-      REQUIRE_TILEDB_OK(tiledb_array_schema_add_dimension_label(
-          ctx, array_schema, 0, "x", dim_label_schema));
-      tiledb_dimension_label_schema_free(&dim_label_schema);
-
-      // Check array schema and number of dimension labels.
-      REQUIRE_TILEDB_OK(tiledb_array_schema_check(ctx, array_schema));
-      auto dim_label_num = array_schema->array_schema_->dim_label_num();
-      REQUIRE(dim_label_num == 1);
-    }
-
+    tiledb_label_order_t label_order{TILEDB_INCREASING_LABELS};
+    add_dimension_label(
+        ctx,
+        array_schema,
+        "x",
+        0,
+        label_order,
+        TILEDB_FLOAT64,
+        &label_domain[0],
+        &label_tile_extent,
+        &x_tile_extent);
     // Create array
     array_name = create_temporary_array("array_with_label_1", array_schema);
     tiledb_array_schema_free(&array_schema);
