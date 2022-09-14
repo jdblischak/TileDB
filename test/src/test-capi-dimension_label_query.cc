@@ -61,6 +61,7 @@ using namespace tiledb::test;
  * Create a small sparse array with a dimension label.
  *
  */
+template <tiledb_label_order_t label_order>
 class SparseArrayExample1 : public TemporaryDirectoryFixture {
  public:
   SparseArrayExample1() {
@@ -85,7 +86,6 @@ class SparseArrayExample1 : public TemporaryDirectoryFixture {
 
     // Add dimension label.
     double label_tile_extent = 2.0;
-    tiledb_label_order_t label_order{TILEDB_INCREASING_LABELS};
     add_dimension_label(
         ctx,
         array_schema,
@@ -137,28 +137,7 @@ class SparseArrayExample1 : public TemporaryDirectoryFixture {
     tiledb_array_free(&array);
   }
 
- protected:
-  std::string array_name;
-
-  /** Valid range for the index. */
-  constexpr static uint64_t dim_domain[2]{0, 3};
-
-  /** Valid range for the label. */
-  constexpr static double label_domain[2]{-1, 1};
-};
-
-TEST_CASE_METHOD(
-    SparseArrayExample1,
-    "Write ordered dimension label data",
-    "[capi][query][DimensionLabel]") {
-  // Input data.
-  std::vector<uint64_t> input_index_data{0, 1, 2, 3};
-  std::vector<double> input_label_data{-1.0, 0.0, 0.5, 1.0};
-  std::vector<double> input_attr_data{0.5, 1.0, 1.5, 2.0};
-
-  write_array_with_label(input_index_data, input_attr_data, input_label_data);
-  // Read indexed array
-  {
+  std::vector<double> read_indexed_array() {
     // Define output data.
     std::vector<double> label_data(4, 0.0);
     uint64_t label_data_size{label_data.size() * sizeof(double)};
@@ -193,14 +172,10 @@ TEST_CASE_METHOD(
     tiledb_subarray_free(&subarray);
     tiledb_array_free(&array);
 
-    // Check results.
-    for (uint64_t ii{0}; ii < 4; ++ii) {
-      CHECK(label_data[ii] == input_label_data[ii]);
-    }
+    return label_data;
   }
 
-  // Read labelled array
-  {
+  std::tuple<std::vector<uint64_t>, std::vector<double>> read_labelled_array() {
     // Define output data.
     std::vector<double> label_data(4, 0.0);
     uint64_t label_data_size{label_data.size() * sizeof(double)};
@@ -238,6 +213,41 @@ TEST_CASE_METHOD(
     tiledb_subarray_free(&subarray);
     tiledb_array_free(&array);
 
+    return {index_data, label_data};
+  }
+
+ protected:
+  std::string array_name;
+
+  /** Valid range for the index. */
+  constexpr static uint64_t dim_domain[2]{0, 3};
+
+  /** Valid range for the label. */
+  constexpr static double label_domain[2]{-1, 1};
+};
+
+TEST_CASE_METHOD(
+    SparseArrayExample1<TILEDB_INCREASING_LABELS>,
+    "Write increasing dimension label data",
+    "[capi][query][DimensionLabel]") {
+  // Input data.
+  std::vector<uint64_t> input_index_data{0, 1, 2, 3};
+  std::vector<double> input_label_data{-1.0, 0.0, 0.5, 1.0};
+  std::vector<double> input_attr_data{0.5, 1.0, 1.5, 2.0};
+
+  write_array_with_label(input_index_data, input_attr_data, input_label_data);
+  // Read indexed array
+  {
+    auto label_data = read_indexed_array();
+    // Check results.
+    for (uint64_t ii{0}; ii < 4; ++ii) {
+      CHECK(label_data[ii] == input_label_data[ii]);
+    }
+  }
+
+  // Read labelled array
+  {
+    auto [index_data, label_data] = read_labelled_array();
     // Check results.
     for (uint64_t ii{0}; ii < 4; ++ii) {
       CHECK(label_data[ii] == input_label_data[ii]);
