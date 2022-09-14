@@ -42,6 +42,7 @@
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/c_api/tiledb_experimental.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
+#include "vfs_helpers.h"
 
 namespace tiledb::test {
 
@@ -65,6 +66,110 @@ void add_dimension_label(
     optional<std::pair<tiledb_filter_type_t, int>> index_filters = nullopt,
     optional<uint64_t> capacity = nullopt,
     optional<bool> allows_dups = nullopt);
+
+/**
+ * Extension of the TemporaryDirectoryFixture that adds helper functions for
+ * testing dimension labels.
+ */
+class DimensionLabelFixture : public TemporaryDirectoryFixture {
+ public:
+  /**
+   * TODO docs.
+   */
+  template <typename label_data_type>
+  std::vector<label_data_type> read_indexed_array(
+      const sm::URI& dim_label_uri,
+      const uint64_t ncells,
+      void* start,
+      void* end) {
+    // Define output data.
+    std::vector<label_data_type> label_data(ncells);
+    uint64_t label_data_size{label_data.size() * sizeof(label_data_type)};
+
+    // Open array.
+    tiledb_array_t* array;
+    auto uri = dim_label_uri.join_path("indexed");
+    require_tiledb_ok(tiledb_array_alloc(ctx, uri.c_str(), &array));
+    require_tiledb_ok(tiledb_array_open(ctx, array, TILEDB_READ));
+
+    // Create subarray.
+    tiledb_subarray_t* subarray;
+    require_tiledb_ok(tiledb_subarray_alloc(ctx, array, &subarray));
+    require_tiledb_ok(
+        tiledb_subarray_add_range(ctx, subarray, 0, start, end, nullptr));
+
+    // Create query.
+    tiledb_query_t* query;
+    require_tiledb_ok(tiledb_query_alloc(ctx, array, TILEDB_READ, &query));
+    require_tiledb_ok(tiledb_query_set_subarray_t(ctx, query, subarray));
+    require_tiledb_ok(tiledb_query_set_data_buffer(
+        ctx, query, "label", label_data.data(), &label_data_size));
+
+    // Submit query.
+    require_tiledb_ok(tiledb_query_submit(ctx, query));
+    tiledb_query_status_t query_status;
+    require_tiledb_ok(tiledb_query_get_status(ctx, query, &query_status));
+    REQUIRE(query_status == TILEDB_COMPLETED);
+
+    // Clean-up.
+    tiledb_query_free(&query);
+    tiledb_subarray_free(&subarray);
+    tiledb_array_free(&array);
+
+    return label_data;
+  }
+
+  /**
+   * TODO: add docs
+   */
+  template <typename index_data_type, typename label_data_type>
+  std::tuple<std::vector<index_data_type>, std::vector<label_data_type>>
+  read_labelled_array(
+      const sm::URI& dim_label_uri,
+      const uint64_t ncells,
+      void* start,
+      void* end) {
+    // Define output data.
+    std::vector<index_data_type> index_data(ncells);
+    uint64_t index_data_size{index_data.size() * sizeof(index_data_type)};
+    std::vector<label_data_type> label_data(ncells);
+    uint64_t label_data_size{label_data.size() * sizeof(label_data_type)};
+
+    // Open array.
+    tiledb_array_t* array;
+    auto uri = dim_label_uri.join_path("labelled");
+    require_tiledb_ok(tiledb_array_alloc(ctx, uri.c_str(), &array));
+    require_tiledb_ok(tiledb_array_open(ctx, array, TILEDB_READ));
+
+    // Create subarray.
+    tiledb_subarray_t* subarray;
+    require_tiledb_ok(tiledb_subarray_alloc(ctx, array, &subarray));
+    require_tiledb_ok(
+        tiledb_subarray_add_range(ctx, subarray, 0, start, end, nullptr));
+
+    // Create query.
+    tiledb_query_t* query;
+    require_tiledb_ok(tiledb_query_alloc(ctx, array, TILEDB_READ, &query));
+    require_tiledb_ok(tiledb_query_set_subarray_t(ctx, query, subarray));
+    require_tiledb_ok(tiledb_query_set_data_buffer(
+        ctx, query, "label", label_data.data(), &label_data_size));
+    require_tiledb_ok(tiledb_query_set_data_buffer(
+        ctx, query, "index", index_data.data(), &index_data_size));
+
+    // Submit query.
+    require_tiledb_ok(tiledb_query_submit(ctx, query));
+    tiledb_query_status_t query_status;
+    require_tiledb_ok(tiledb_query_get_status(ctx, query, &query_status));
+    REQUIRE(query_status == TILEDB_COMPLETED);
+
+    // Clean-up.
+    tiledb_query_free(&query);
+    tiledb_subarray_free(&subarray);
+    tiledb_array_free(&array);
+
+    return {index_data, label_data};
+  }
+};
 
 }  // namespace tiledb::test
 
