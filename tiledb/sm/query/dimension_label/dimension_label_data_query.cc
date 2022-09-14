@@ -30,10 +30,16 @@
 #include "tiledb/common/common.h"
 #include "tiledb/sm/dimension_label/dimension_label.h"
 #include "tiledb/sm/query/query.h"
+#include "tiledb/sm/query/query_buffer.h"
+#include "tiledb/sm/subarray/subarray.h"
 
 using namespace tiledb::common;
 
 namespace tiledb::sm {
+
+inline Status Status_DimensionLabelQueryError(const std::string& msg) {
+  return {"[TileDB::Query] Error", msg};
+}
 
 DimensionLabelDataQuery::DimensionLabelDataQuery(
     StorageManager* storage_manager,
@@ -80,6 +86,88 @@ void DimensionLabelDataQuery::process() {
     throw_if_not_ok(labelled_array_query->init());
     throw_if_not_ok(labelled_array_query->process());
   }
+}
+
+DimensionLabelReadDataQuery::DimensionLabelReadDataQuery(
+    StorageManager* storage_manager,
+    DimensionLabel* dimension_label,
+    const Subarray& parent_subarray,
+    const QueryBuffer& label_buffer,
+    const uint32_t dim_idx)
+    : DimensionLabelDataQuery{storage_manager, dimension_label, true, false} {
+  // Set the layout (ordered, 1D).
+  throw_if_not_ok(indexed_array_query->set_layout(Layout::ROW_MAJOR));
+
+  // Set the subarray.
+  Subarray subarray{*indexed_array_query->subarray()};
+  throw_if_not_ok(
+      subarray.set_ranges_for_dim(0, parent_subarray.ranges_for_dim(dim_idx)));
+  throw_if_not_ok(indexed_array_query->set_subarray(subarray));
+
+  // Set the label data buffer.
+  indexed_array_query->set_buffer(
+      dimension_label->label_attribute()->name(), label_buffer);
+}
+
+OrderedWriteDataQuery::OrderedWriteDataQuery(
+    StorageManager* storage_manager,
+    DimensionLabel* dimension_label,
+    const Subarray& parent_subarray,
+    const QueryBuffer& index_buffer,
+    const QueryBuffer& label_buffer,
+    const uint32_t dim_idx,
+    optional<std::string> fragment_name)
+    : DimensionLabelDataQuery{
+          storage_manager, dimension_label, true, true, fragment_name} {
+  // Verify only one dimension label is set.
+  if (!dimension_label->labelled_array()->is_empty() ||
+      !dimension_label->indexed_array()->is_empty()) {
+    throw Status_DimensionLabelQueryError(
+        "Cannot write to dimension label. Currently ordered dimension "
+        "labels can only be written to once.");
+  }
+  if (!parent_subarray.is_default(dim_idx)) {
+    throw StatusException(Status_DimensionLabelQueryError(
+        "Failed to create dimension label query. Currently dimension "
+        "labels only support writing the full array."));
+  }
+  // TODO: Check sort
+  // TODO: Check full array
+
+  // Set-up labelled array query (sparse array)
+  throw_if_not_ok(labelled_array_query->set_layout(Layout::UNORDERED));
+  labelled_array_query->set_buffer(
+      dimension_label->label_attribute()->name(), label_buffer);
+  labelled_array_query->set_buffer(
+      dimension_label->index_attribute()->name(), index_buffer);
+
+  // Set-up indexed array query (dense array)
+  throw_if_not_ok(indexed_array_query->set_layout(Layout::ROW_MAJOR));
+  indexed_array_query->set_buffer(
+      dimension_label->label_attribute()->name(), label_buffer);
+}
+
+UnorderedWriteDataQuery::UnorderedWriteDataQuery(
+    StorageManager* storage_manager,
+    DimensionLabel* dimension_label,
+    const QueryBuffer& index_buffer,
+    const QueryBuffer& label_buffer,
+    optional<std::string> fragment_name)
+    : DimensionLabelDataQuery{
+          storage_manager, dimension_label, true, true, fragment_name} {
+  // Set-up labelled array (sparse array)
+  throw_if_not_ok(labelled_array_query->set_layout(Layout::UNORDERED));
+  labelled_array_query->set_buffer(
+      dimension_label->label_dimension()->name(), label_buffer);
+  labelled_array_query->set_buffer(
+      dimension_label->index_attribute()->name(), index_buffer);
+
+  // Set-up indexed array query (sparse array)
+  throw_if_not_ok(indexed_array_query->set_layout(Layout::UNORDERED));
+  indexed_array_query->set_buffer(
+      dimension_label->label_attribute()->name(), label_buffer);
+  indexed_array_query->set_buffer(
+      dimension_label->index_dimension()->name(), index_buffer);
 }
 
 }  // namespace tiledb::sm

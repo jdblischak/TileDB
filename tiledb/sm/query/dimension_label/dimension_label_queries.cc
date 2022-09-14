@@ -208,20 +208,12 @@ void DimensionLabelQueries::add_data_queries_for_read(
 
     // Create the data query.
     data_queries_[label_name] = tdb_unique_ptr<DimensionLabelDataQuery>(tdb_new(
-        DimensionLabelDataQuery, storage_manager, dim_label, true, false));
-    auto& data_query = data_queries_[label_name]->indexed_array_query;
-
-    // Set the layout (ordered, 1D).
-    throw_if_not_ok(data_query->set_layout(Layout::ROW_MAJOR));
-
-    // Set the subarray.
-    Subarray data_query_subarray{*data_query->subarray()};
-    throw_if_not_ok(data_query_subarray.set_ranges_for_dim(
-        0, subarray.ranges_for_dim(dim_label_ref.dimension_id())));
-    throw_if_not_ok(data_query->set_subarray(data_query_subarray));
-
-    // Set the label data buffer.
-    data_query->set_buffer(dim_label->label_attribute()->name(), label_buffer);
+        DimensionLabelReadDataQuery,
+        storage_manager,
+        dim_label,
+        subarray,
+        label_buffer,
+        dim_label_ref.dimension_id()));
   }
 }
 
@@ -247,77 +239,45 @@ void DimensionLabelQueries::add_data_queries_for_write(
     auto* dim_label = open_dimension_label(
         storage_manager, array, dim_label_ref, QueryType::WRITE, true, true);
 
-    // Create the data query.
-    data_queries_[label_name] = tdb_unique_ptr<DimensionLabelDataQuery>(tdb_new(
-        DimensionLabelDataQuery,
-        storage_manager,
-        dim_label,
-        true,
-        true,
-        fragment_name));
-    auto& labelled_array_query =
-        data_queries_[label_name]->labelled_array_query;
-    auto& indexed_array_query = data_queries_[label_name]->indexed_array_query;
-
     // Get the index_buffer from the array buffers.
     const auto& dim_name = array->array_schema_latest()
                                .dimension_ptr(dim_label_ref.dimension_id())
                                ->name();
     const auto& index_buffer_pair = array_buffers.find(dim_name);
-    if (index_buffer_pair == array_buffers.end()) {
-      throw StatusException(Status_DimensionLabelQueryError(
-          "Cannot read range data from unordered label '" + label_name +
-          "'; Missing a data buffer for dimension '" + dim_name + "'."));
-    }
-    const auto& index_buffer = index_buffer_pair->second;
 
     switch (dim_label_ref.label_order()) {
       case (LabelOrder::INCREASING_LABELS):
       case (LabelOrder::DECREASING_LABELS):
-        // Verify only one dimension label is set.
-        if (!dim_label->labelled_array()->is_empty() ||
-            !dim_label->indexed_array()->is_empty()) {
-          throw Status_DimensionLabelQueryError(
-              "Cannot write to dimension label. Currently ordered dimension "
-              "labels can only be written to once.");
-        }
-        if (!subarray.is_default(dim_label_ref.dimension_id())) {
+        if (index_buffer_pair == array_buffers.end()) {
           throw StatusException(Status_DimensionLabelQueryError(
-              "Failed to create dimension label query. Currently dimension "
-              "labels only support writing the full array."));
+              "Cannot read range data from unordered label '" + label_name +
+              "'; Missing a data buffer for dimension '" + dim_name + "'."));
         }
-        // TODO: Check sort
-        // TODO: CHeck full array
-        // TODO: Check
-
-        // Set-up labelled array query (sparse array)
-        throw_if_not_ok(labelled_array_query->set_layout(Layout::UNORDERED));
-        labelled_array_query->set_buffer(
-            dim_label->label_attribute()->name(), label_buffer);
-        labelled_array_query->set_buffer(
-            dim_label->index_attribute()->name(), index_buffer);
-
-        // Set-up indexed array query (dense array)
-        throw_if_not_ok(indexed_array_query->set_layout(Layout::ROW_MAJOR));
-        indexed_array_query->set_buffer(
-            dim_label->label_attribute()->name(), label_buffer);
+        data_queries_[label_name] =
+            tdb_unique_ptr<DimensionLabelDataQuery>(tdb_new(
+                OrderedWriteDataQuery,
+                storage_manager,
+                dim_label,
+                subarray,
+                index_buffer_pair->second,
+                label_buffer,
+                dim_label_ref.dimension_id(),
+                fragment_name));
         break;
       case (LabelOrder::UNORDERED_LABELS):
-
-        // Set-up labelled array (sparse array)
-        throw_if_not_ok(labelled_array_query->set_layout(Layout::UNORDERED));
-        labelled_array_query->set_buffer(
-            dim_label->label_dimension()->name(), label_buffer);
-        labelled_array_query->set_buffer(
-            dim_label->index_attribute()->name(), index_buffer);
-
-        // Set-up indexed array query (sparse array)
-        throw_if_not_ok(indexed_array_query->set_layout(Layout::UNORDERED));
-        indexed_array_query->set_buffer(
-            dim_label->label_attribute()->name(), label_buffer);
-        indexed_array_query->set_buffer(
-            dim_label->index_dimension()->name(), index_buffer);
-
+        if (index_buffer_pair == array_buffers.end()) {
+          throw StatusException(Status_DimensionLabelQueryError(
+              "Cannot read range data from unordered label '" + label_name +
+              "'; Missing a data buffer for dimension '" + dim_name + "'."));
+        }
+        data_queries_[label_name] =
+            tdb_unique_ptr<DimensionLabelDataQuery>(tdb_new(
+                UnorderedWriteDataQuery,
+                storage_manager,
+                dim_label,
+                index_buffer_pair->second,
+                label_buffer,
+                fragment_name));
         break;
       default:
         // Invalid label order type.

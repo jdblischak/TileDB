@@ -42,7 +42,9 @@ namespace tiledb::sm {
 
 class DimensionLabel;
 class Query;
+class QueryBuffer;
 class StorageManager;
+class Subarray;
 
 class DimensionLabelDataQuery {
  public:
@@ -61,6 +63,8 @@ class DimensionLabelDataQuery {
       bool add_labelled_query,
       optional<std::string> fragment_name = nullopt);
 
+  virtual ~DimensionLabelDataQuery() = default;
+
   /** TODO */
   void cancel();
 
@@ -75,6 +79,45 @@ class DimensionLabelDataQuery {
 
   /** TODO */
   tdb_unique_ptr<Query> labelled_array_query{nullptr};
+};
+
+/** TODO: Docs */
+class DimensionLabelReadDataQuery : public DimensionLabelDataQuery {
+ public:
+  DimensionLabelReadDataQuery() = delete;
+
+  DimensionLabelReadDataQuery(
+      StorageManager* storage_manager,
+      DimensionLabel* dimension_label,
+      const Subarray& parent_subarray,
+      const QueryBuffer& label_buffer,
+      const uint32_t dim_idx);
+};
+
+/** TODO: Docs */
+class OrderedWriteDataQuery : public DimensionLabelDataQuery {
+ public:
+  OrderedWriteDataQuery() = delete;
+  OrderedWriteDataQuery(
+      StorageManager* storage_manager,
+      DimensionLabel* dimension_label,
+      const Subarray& parent_subarray,
+      const QueryBuffer& index_buffer,
+      const QueryBuffer& label_buffer,
+      const uint32_t dim_idx,
+      optional<std::string> fragment_name);
+};
+
+/** TODO: Docs */
+class UnorderedWriteDataQuery : public DimensionLabelDataQuery {
+ public:
+  UnorderedWriteDataQuery() = delete;
+  UnorderedWriteDataQuery(
+      StorageManager* storage_manager,
+      DimensionLabel* dimension_label,
+      const QueryBuffer& index_buffer,
+      const QueryBuffer& label_buffer,
+      optional<std::string> fragment_name);
 };
 
 }  // namespace tiledb::sm
