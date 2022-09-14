@@ -1131,6 +1131,11 @@ class Query {
   Status check_buffers_correctness();
 
   /**
+   * Returns true if only querying dimension labels.
+   */
+  bool only_dim_label_query() const;
+
+  /**
    * This is a deprecated API.
    * Internal routine for setting fixed-sized, nullable attribute buffers with
    * a ValidityVector.

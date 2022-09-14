@@ -120,12 +120,18 @@ class SparseArrayExample1 : public DimensionLabelFixture {
     tiledb_query_t* query;
     require_tiledb_ok(tiledb_query_alloc(ctx, array, TILEDB_WRITE, &query));
     require_tiledb_ok(tiledb_query_set_layout(ctx, query, TILEDB_UNORDERED));
-    require_tiledb_ok(tiledb_query_set_data_buffer(
-        ctx, query, "x", input_index_data.data(), &index_data_size));
-    require_tiledb_ok(tiledb_query_set_data_buffer(
-        ctx, query, "a", input_attr_data.data(), &attr_data_size));
-    require_tiledb_ok(tiledb_query_set_label_data_buffer(
-        ctx, query, "x", input_label_data.data(), &label_data_size));
+    if (index_data_size != 0) {
+      require_tiledb_ok(tiledb_query_set_data_buffer(
+          ctx, query, "x", input_index_data.data(), &index_data_size));
+    }
+    if (attr_data_size != 0) {
+      require_tiledb_ok(tiledb_query_set_data_buffer(
+          ctx, query, "a", input_attr_data.data(), &attr_data_size));
+    }
+    if (label_data_size != 0) {
+      require_tiledb_ok(tiledb_query_set_label_data_buffer(
+          ctx, query, "x", input_label_data.data(), &label_data_size));
+    }
 
     // Submit write query.
     require_tiledb_ok(tiledb_query_submit(ctx, query));
@@ -168,15 +174,15 @@ class SparseArrayExample1 : public DimensionLabelFixture {
 
 TEST_CASE_METHOD(
     SparseArrayExample1<TILEDB_INCREASING_LABELS>,
-    "Write increasing dimension label data",
+    "Write increasing dimension label and array for sparse 1D array",
     "[capi][query][DimensionLabel]") {
-  // Input data.
+  // Define input data and write.
   std::vector<uint64_t> input_index_data{0, 1, 2, 3};
   std::vector<double> input_label_data{-1.0, 0.0, 0.5, 1.0};
   std::vector<double> input_attr_data{0.5, 1.0, 1.5, 2.0};
-
   write_array_with_label(input_index_data, input_attr_data, input_label_data);
-  // Read indexed array
+
+  // Read back and check indexed array.
   {
     auto label_data = read_indexed_array();
     // Check results.
@@ -185,7 +191,39 @@ TEST_CASE_METHOD(
     }
   }
 
-  // Read labelled array
+  // Read back and check labelled array.
+  {
+    auto [index_data, label_data] = read_labelled_array();
+    // Check results.
+    for (uint64_t ii{0}; ii < 4; ++ii) {
+      CHECK(label_data[ii] == input_label_data[ii]);
+    }
+    for (uint64_t ii{0}; ii < 4; ++ii) {
+      CHECK(index_data[ii] == input_index_data[ii]);
+    }
+  }
+}
+
+TEST_CASE_METHOD(
+    SparseArrayExample1<TILEDB_INCREASING_LABELS>,
+    "Write increasing dimension label only for sparse 1D array",
+    "[capi][query][DimensionLabel]") {
+  // Define input data and write.
+  std::vector<uint64_t> input_index_data{0, 1, 2, 3};
+  std::vector<double> input_label_data{-1.0, 0.0, 0.5, 1.0};
+  std::vector<double> input_attr_data{0.5, 1.0, 1.5, 2.0};
+  write_array_with_label(input_index_data, input_attr_data, input_label_data);
+
+  // Read back and check indexed array.
+  {
+    auto label_data = read_indexed_array();
+    // Check results.
+    for (uint64_t ii{0}; ii < 4; ++ii) {
+      CHECK(label_data[ii] == input_label_data[ii]);
+    }
+  }
+
+  // Read back and check labelled array.
   {
     auto [index_data, label_data] = read_labelled_array();
     // Check results.

@@ -1123,7 +1123,8 @@ Status Query::init() {
     // Create the query strategy if possible. May need to wait for range queries
     // to complete and the subarray is updated.
     if (!dim_label_queries_ ||
-        dim_label_queries_->range_query_status() == QueryStatus::COMPLETED) {
+        (dim_label_queries_->range_query_status() == QueryStatus::COMPLETED &&
+         !only_dim_label_query())) {
       RETURN_NOT_OK(create_strategy());
     }
   }
@@ -1202,14 +1203,19 @@ Status Query::process() {
 
     // Label queries are completed and the subarray is fully updated. We can
     // create the query strategy now.
-    RETURN_NOT_OK(create_strategy());
+    if (!only_dim_label_query()) {
+      RETURN_NOT_OK(create_strategy());
+    }
   }
 
   // Update query status.
   status_ = QueryStatus::INPROGRESS;
 
   // Process query
-  Status st = strategy_->dowork();
+  Status st{Status::Ok()};
+  if (!only_dim_label_query()) {
+    st = strategy_->dowork();
+  }
 
   // Process dimension label queries
   if (dim_label_queries_) {
@@ -1232,7 +1238,7 @@ Status Query::process() {
   }
 
   // Check if the query is complete
-  bool completed = !strategy_->incomplete();
+  bool completed = only_dim_label_query() || !strategy_->incomplete();
 
   // TODO: Add in logic for in the dimension label query is not complete.
 
@@ -1309,34 +1315,38 @@ void Query::set_processed_conditions(
 Status Query::check_buffer_names() {
   if (type_ == QueryType::WRITE || type_ == QueryType::MODIFY_EXCLUSIVE) {
     // If the array is sparse, the coordinates must be provided
-    if (!array_schema_->dense() && !coords_info_.has_coords_)
+    if (!array_schema_->dense() && !coords_info_.has_coords_) {
       return logger_->status(Status_WriterError(
           "Sparse array writes expect the coordinates of the "
           "cells to be written"));
+    }
 
     // If the layout is unordered, the coordinates must be provided
-    if (layout_ == Layout::UNORDERED && !coords_info_.has_coords_)
+    if (layout_ == Layout::UNORDERED && !coords_info_.has_coords_) {
       return logger_->status(
           Status_WriterError("Unordered writes expect the coordinates of the "
                              "cells to be written"));
+    }
 
     // All attributes/dimensions must be provided
-    // TODO: How to handle when writing to dimension labels?
-    auto expected_num = array_schema_->attribute_num();
-    expected_num += static_cast<decltype(expected_num)>(
-        buffers_.count(constants::timestamps));
-    expected_num += static_cast<decltype(expected_num)>(
-        buffers_.count(constants::delete_timestamps));
-    expected_num += static_cast<decltype(expected_num)>(
-        buffers_.count(constants::delete_condition_index));
-    expected_num += (coord_buffer_is_set_ || coord_data_buffer_is_set_ ||
-                     coord_offsets_buffer_is_set_) ?
-                        array_schema_->dim_num() :
-                        0;
-    if (buffers_.size() != expected_num)
-      return logger_->status(
-          Status_WriterError("Writes expect all attributes (and coordinates in "
-                             "the sparse/unordered case) to be set"));
+    if (!only_dim_label_query()) {
+      auto expected_num = array_schema_->attribute_num();
+      expected_num += static_cast<decltype(expected_num)>(
+          buffers_.count(constants::timestamps));
+      expected_num += static_cast<decltype(expected_num)>(
+          buffers_.count(constants::delete_timestamps));
+      expected_num += static_cast<decltype(expected_num)>(
+          buffers_.count(constants::delete_condition_index));
+      expected_num += (coord_buffer_is_set_ || coord_data_buffer_is_set_ ||
+                       coord_offsets_buffer_is_set_) ?
+                          array_schema_->dim_num() :
+                          0;
+      if (buffers_.size() != expected_num) {
+        return logger_->status(Status_WriterError(
+            "Writes expect all attributes (and coordinates in "
+            "the sparse/unordered case) to be set"));
+      }
+    }
   }
 
   return Status::Ok();
@@ -2575,6 +2585,21 @@ Status Query::check_buffers_correctness() {
     }
   }
   return Status::Ok();
+}
+
+bool Query::only_dim_label_query() const {
+  // TODO: Check this covers all cases.
+  // Returns true if:
+  //   1. At least one buffer label
+  //   2. No attribute buffers
+  //   3. At most one dimension buffer
+  //   TODO: How to handle special buffers for deletes?
+  return (
+      !label_buffers_.empty() &&
+      (buffers_.size() == 0 ||
+       (buffers_.size() == 1 &&
+        (coord_buffer_is_set_ || coord_data_buffer_is_set_ ||
+         coord_offsets_buffer_is_set_))));
 }
 
 Status Query::submit() {
