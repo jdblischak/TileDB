@@ -95,17 +95,73 @@ class DimensionLabelReadDataQuery : public DimensionLabelDataQuery {
 };
 
 /** TODO: Docs */
+class IndexData {
+ public:
+  virtual ~IndexData() = default;
+  virtual void* data() = 0;
+  virtual uint64_t* data_size() = 0;
+};
+template <
+    typename T,
+    typename std::enable_if<std::is_integral<T>::value>::type* = nullptr>
+class TypedIndexData : public IndexData {
+ public:
+  TypedIndexData(const type::Range& range)
+      : data_{}
+      , data_size_{0} {
+    auto range_data = static_cast<const T*>(range.data());
+    T min_value = range_data[0];
+    T max_value = range_data[1];
+    if (max_value < min_value) {
+      throw std::invalid_argument(
+          "Invalid range - cannot have lower bound greater than the upper "
+          "bound.");
+    }
+    data_.reserve(max_value - min_value + 1);
+    for (T val = min_value; val <= max_value; ++val) {
+      data_.push_back(val);
+    }
+    data_size_ = sizeof(T) * data_.size();
+  }
+
+  void* data() override {
+    return data_.data();
+  }
+
+  uint64_t* data_size() override {
+    return &data_size_;
+  }
+
+ private:
+  std::vector<T> data_;
+  uint64_t data_size_;
+};
+
+/** TODO: Docs */
 class OrderedWriteDataQuery : public DimensionLabelDataQuery {
  public:
+  /** Default constructor is not C.41 compliant. */
   OrderedWriteDataQuery() = delete;
+
+  /** Constructor for when index buffer is set. */
+  OrderedWriteDataQuery(
+      StorageManager* storage_manager,
+      DimensionLabel* dimension_label,
+      const QueryBuffer& index_buffer,
+      const QueryBuffer& label_buffer,
+      optional<std::string> fragment_name);
+
+  /** Constructor for when index buffer is not set. */
   OrderedWriteDataQuery(
       StorageManager* storage_manager,
       DimensionLabel* dimension_label,
       const Subarray& parent_subarray,
-      const QueryBuffer& index_buffer,
       const QueryBuffer& label_buffer,
       const uint32_t dim_idx,
       optional<std::string> fragment_name);
+
+ private:
+  tdb_unique_ptr<IndexData> index_data_;
 };
 
 /** TODO: Docs */

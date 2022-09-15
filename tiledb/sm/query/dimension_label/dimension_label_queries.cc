@@ -249,20 +249,25 @@ void DimensionLabelQueries::add_data_queries_for_write(
       case (LabelOrder::INCREASING_LABELS):
       case (LabelOrder::DECREASING_LABELS):
         if (index_buffer_pair == array_buffers.end()) {
-          throw StatusException(Status_DimensionLabelQueryError(
-              "Cannot read range data from unordered label '" + label_name +
-              "'; Missing a data buffer for dimension '" + dim_name + "'."));
+          data_queries_[label_name] =
+              tdb_unique_ptr<DimensionLabelDataQuery>(tdb_new(
+                  OrderedWriteDataQuery,
+                  storage_manager,
+                  dim_label,
+                  subarray,
+                  label_buffer,
+                  dim_label_ref.dimension_id(),
+                  fragment_name));
+        } else {
+          data_queries_[label_name] =
+              tdb_unique_ptr<DimensionLabelDataQuery>(tdb_new(
+                  OrderedWriteDataQuery,
+                  storage_manager,
+                  dim_label,
+                  index_buffer_pair->second,
+                  label_buffer,
+                  fragment_name));
         }
-        data_queries_[label_name] =
-            tdb_unique_ptr<DimensionLabelDataQuery>(tdb_new(
-                OrderedWriteDataQuery,
-                storage_manager,
-                dim_label,
-                subarray,
-                index_buffer_pair->second,
-                label_buffer,
-                dim_label_ref.dimension_id(),
-                fragment_name));
         break;
       case (LabelOrder::UNORDERED_LABELS):
         if (index_buffer_pair == array_buffers.end()) {
