@@ -929,6 +929,13 @@ class Query {
   /** Returns if all ranges for this query are non overlapping. */
   tuple<Status, optional<bool>> non_overlapping_ranges();
 
+  /**
+   * Set a flag to specify we are doing an ordered dimension label read.
+   *
+   * @param increaging_order Is the query on an array with increasing order?
+   */
+  void set_dimension_label_ordered_read(bool increaging_order);
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -1062,6 +1069,12 @@ class Query {
    * timestamp and a generated UUID.
    */
   optional<std::string> fragment_name_;
+
+  /** Flag to specify we are doing a dimension label ordered read. */
+  bool is_dimension_label_ordered_read_;
+
+  /** Is the dimension label ordered read on an array with increasing order? */
+  bool dimension_label_increasing_;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */

@@ -44,6 +44,7 @@
 #include "tiledb/sm/query/legacy/reader.h"
 #include "tiledb/sm/query/query_condition.h"
 #include "tiledb/sm/query/readers/dense_reader.h"
+#include "tiledb/sm/query/readers/ordered_dim_label_reader.h"
 #include "tiledb/sm/query/readers/sparse_global_order_reader.h"
 #include "tiledb/sm/query/readers/sparse_unordered_with_dups_reader.h"
 #include "tiledb/sm/query/writers/global_order_writer.h"
@@ -92,7 +93,9 @@ Query::Query(
     , disable_checks_consolidation_(false)
     , consolidation_with_timestamps_(false)
     , force_legacy_reader_(false)
-    , fragment_name_(fragment_name) {
+    , fragment_name_(fragment_name)
+    , is_dimension_label_ordered_read_(false)
+    , dimension_label_increasing_(true) {
   assert(array->is_open());
 
   subarray_ = Subarray(array_, layout_, stats_, logger_);
@@ -1273,8 +1276,24 @@ Status Query::create_strategy(bool skip_checks_serialization) {
       all_dense &= frag_md->dense();
     }
 
-    if (use_refactored_sparse_unordered_with_dups_reader(
-            layout_, *array_schema_)) {
+    if (is_dimension_label_ordered_read_) {
+      use_default = false;
+
+      strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
+          OrderedDimLabelReader,
+          stats_->create_child("Reader"),
+          logger_,
+          storage_manager_,
+          array_,
+          config_,
+          buffers_,
+          subarray_,
+          layout_,
+          condition_,
+          dimension_label_increasing_,
+          skip_checks_serialization));
+    } else if (use_refactored_sparse_unordered_with_dups_reader(
+                   layout_, *array_schema_)) {
       use_default = false;
 
       auto&& [st, non_overlapping_ranges]{Query::non_overlapping_ranges()};
@@ -2196,11 +2215,6 @@ Status Query::set_subarray(const tiledb::sm::Subarray& subarray) {
   }
 
   // Set subarray
-  if (!subarray.is_set())
-    // Nothing useful to set here, will leave query with its current
-    // settings and consider successful.
-    return Status::Ok();
-
   auto prev_layout = subarray_.layout();
   subarray_ = subarray;
   subarray_.set_layout(prev_layout);
@@ -2440,6 +2454,11 @@ bool Query::use_refactored_sparse_unordered_with_dups_reader(
 
 tuple<Status, optional<bool>> Query::non_overlapping_ranges() {
   return subarray_.non_overlapping_ranges(storage_manager_->compute_tp());
+}
+
+void Query::set_dimension_label_ordered_read(bool increaging_order) {
+  is_dimension_label_ordered_read_ = true;
+  dimension_label_increasing_ = increaging_order;
 }
 
 /* ****************************** */
