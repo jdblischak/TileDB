@@ -148,20 +148,39 @@ class SparseArrayExample1 : public DimensionLabelFixture {
     tiledb_array_free(&array);
   }
 
-  std::vector<double> read_indexed_array() {
-    return DimensionLabelFixture::read_indexed_array<double>(
+  void check_indexed_array_data(
+      const std::vector<double>& expected_label_data) {
+    // Read back the data.
+    auto label_data = DimensionLabelFixture::read_indexed_array<double>(
         URI(array_name).join_path("__labels/l0"),
         4,
         &index_domain_[0],
         &index_domain_[1]);
+
+    // Check results.
+    for (uint64_t ii{0}; ii < 4; ++ii) {
+      CHECK(label_data[ii] == expected_label_data[ii]);
+    }
   }
 
-  std::tuple<std::vector<uint64_t>, std::vector<double>> read_labelled_array() {
-    return DimensionLabelFixture::read_labelled_array<uint64_t, double>(
-        URI(array_name).join_path("__labels/l0"),
-        4,
-        &label_domain_[0],
-        &label_domain_[1]);
+  void check_labelled_array_data(
+      const std::vector<uint64_t>& expected_index_data,
+      const std::vector<double>& expected_label_data) {
+    // Read back the data.
+    auto [index_data, label_data] =
+        DimensionLabelFixture::read_labelled_array<uint64_t, double>(
+            URI(array_name).join_path("__labels/l0"),
+            4,
+            &label_domain_[0],
+            &label_domain_[1]);
+
+    // Check the results.
+    for (uint64_t ii{0}; ii < 4; ++ii) {
+      CHECK(index_data[ii] == expected_index_data[ii]);
+    }
+    for (uint64_t ii{0}; ii < 4; ++ii) {
+      CHECK(label_data[ii] == expected_label_data[ii]);
+    }
   }
 
  protected:
@@ -187,6 +206,7 @@ class DenseArrayExample1 : public DimensionLabelFixture {
       , index_domain_{0, 3}
       , label_domain_{-1, 1} {
   }
+
   void create_example(tiledb_label_order_t label_order) {
     // Create an array schema
     uint64_t x_tile_extent{4};
@@ -266,20 +286,39 @@ class DenseArrayExample1 : public DimensionLabelFixture {
     tiledb_array_free(&array);
   }
 
-  std::vector<double> read_indexed_array() {
-    return DimensionLabelFixture::read_indexed_array<double>(
+  void check_indexed_array_data(
+      const std::vector<double>& expected_label_data) {
+    // Read back the data.
+    auto label_data = DimensionLabelFixture::read_indexed_array<double>(
         URI(array_name).join_path("__labels/l0"),
         4,
         &index_domain_[0],
         &index_domain_[1]);
+
+    // Check results.
+    for (uint64_t ii{0}; ii < 4; ++ii) {
+      CHECK(label_data[ii] == expected_label_data[ii]);
+    }
   }
 
-  std::tuple<std::vector<uint64_t>, std::vector<double>> read_labelled_array() {
-    return DimensionLabelFixture::read_labelled_array<uint64_t, double>(
-        URI(array_name).join_path("__labels/l0"),
-        4,
-        &label_domain_[0],
-        &label_domain_[1]);
+  void check_labelled_array_data(
+      const std::vector<uint64_t>& expected_index_data,
+      const std::vector<double>& expected_label_data) {
+    // Read back the data.
+    auto [index_data, label_data] =
+        DimensionLabelFixture::read_labelled_array<uint64_t, double>(
+            URI(array_name).join_path("__labels/l0"),
+            4,
+            &label_domain_[0],
+            &label_domain_[1]);
+
+    // Check the results.
+    for (uint64_t ii{0}; ii < 4; ++ii) {
+      CHECK(index_data[ii] == expected_index_data[ii]);
+    }
+    for (uint64_t ii{0}; ii < 4; ++ii) {
+      CHECK(label_data[ii] == expected_label_data[ii]);
+    }
   }
 
  protected:
@@ -298,69 +337,101 @@ TEST_CASE_METHOD(
     SparseArrayExample1,
     "Write dimension label for sparse 1D array",
     "[capi][query][DimensionLabel]") {
-  // Define input data and write.
-  std::vector<uint64_t> input_index_data;
-  std::vector<double> input_label_data;
-  std::vector<double> input_attr_data;
+  // Define the input data values.
+  std::vector<uint64_t> input_index_data{};
+  std::vector<double> input_label_data{};
+  std::vector<double> input_attr_data{};
+
+  // Define the expected output values for the labelled array.
+  std::vector<double> expected_label_data_sorted{};
+  std::vector<uint64_t> expected_index_data{};
 
   SECTION("Write increasing labels with array data") {
     // Create array.
     create_example(TILEDB_INCREASING_LABELS);
 
-    // Set data value.
-    input_index_data.insert(input_index_data.begin(), {0, 1, 2, 3});
-    input_label_data.insert(input_label_data.begin(), {-1.0, 0.0, 0.5, 1.0});
-    input_attr_data.insert(input_attr_data.begin(), {0.5, 1.0, 1.5, 2.0});
+    // Set input values.
+    input_index_data = {0, 1, 2, 3};
+    input_label_data = {-1.0, 0.0, 0.5, 1.0};
+    input_attr_data = {0.5, 1.0, 1.5, 2.0};
+
+    // Set expected output values.
+    expected_label_data_sorted = input_label_data;
+    expected_index_data = input_index_data;
   }
 
   SECTION("Write increasing labels only ") {
     // Create array.
     create_example(TILEDB_INCREASING_LABELS);
 
-    // Set data values.
-    input_index_data.insert(input_index_data.begin(), {0, 1, 2, 3});
-    input_label_data.insert(input_label_data.begin(), {-1.0, 0.0, 0.5, 1.0});
+    // Set input values.
+    input_index_data = {0, 1, 2, 3};
+    input_label_data = {-1.0, 0.0, 0.5, 1.0};
+    input_attr_data = {0.5, 1.0, 1.5, 2.0};
+
+    // Set expected_output values.
+    expected_label_data_sorted = input_label_data;
+    expected_index_data = input_index_data;
+  }
+
+  SECTION("Write decreasing labels with array data") {
+    // Create the array.
+    create_example(TILEDB_DECREASING_LABELS);
+
+    // Set the data values.
+    input_index_data = {0, 1, 2, 3};
+    input_label_data = {1.0, 0.0, -0.5, -1.0};
+    input_attr_data = {0.5, 1.0, 1.5, 2.0};
+
+    // Define expected output data.
+    expected_label_data_sorted = {-1.0, -0.5, 0.0, 1.0};
+    expected_index_data = {3, 2, 1, 0};
+  }
+
+  SECTION("Write decreasing labels only") {
+    // Create the array.
+    create_example(TILEDB_DECREASING_LABELS);
+
+    // Set the data values.
+    input_index_data = {0, 1, 2, 3};
+    input_label_data = {1.0, 0.0, -0.5, -1.0};
+
+    // Define expected output data.
+    expected_label_data_sorted = {-1.0, -0.5, 0.0, 1.0};
+    expected_index_data = {3, 2, 1, 0};
   }
 
   // Write the array and label.
   write_array_with_label(input_index_data, input_attr_data, input_label_data);
 
-  // Read back and check indexed array.
-  {
-    auto label_data = read_indexed_array();
-    // Check results.
-    for (uint64_t ii{0}; ii < 4; ++ii) {
-      CHECK(label_data[ii] == input_label_data[ii]);
-    }
-  }
-
-  // Read back and check labelled array.
-  {
-    auto [index_data, label_data] = read_labelled_array();
-    // Check results.
-    for (uint64_t ii{0}; ii < 4; ++ii) {
-      CHECK(label_data[ii] == input_label_data[ii]);
-    }
-    for (uint64_t ii{0}; ii < 4; ++ii) {
-      CHECK(index_data[ii] == input_index_data[ii]);
-    }
-  }
+  // Check the dimension label arrays have the correct data.
+  check_indexed_array_data(input_label_data);
+  check_labelled_array_data(expected_index_data, expected_label_data_sorted);
 }
 
 TEST_CASE_METHOD(
     DenseArrayExample1,
     "Write dimension label for dense 1D array",
     "[capi][query][DimensionLabel]") {
+  // Define the input data values.
   std::vector<double> input_label_data{};
   std::vector<double> input_attr_data{};
+
+  // Define the expected output values.
+  std::vector<double> expected_label_data_sorted{};
+  std::vector<uint64_t> expected_index_data{};
 
   SECTION("Write increasing labels with array data") {
     // Create the array.
     create_example(TILEDB_INCREASING_LABELS);
 
-    // Set the data values.
-    input_label_data.insert(input_label_data.begin(), {-1.0, 0.0, 0.5, 1.0});
-    input_attr_data.insert(input_attr_data.begin(), {0.5, 1.0, 1.5, 2.0});
+    // Set the input  values.
+    input_label_data = {-1.0, 0.0, 0.5, 1.0};
+    input_attr_data = {0.5, 1.0, 1.5, 2.0};
+
+    // Define expected output data.
+    expected_label_data_sorted = input_label_data;
+    expected_index_data = {0, 1, 2, 3};
   }
 
   SECTION("Write increasing labels only") {
@@ -368,32 +439,42 @@ TEST_CASE_METHOD(
     create_example(TILEDB_INCREASING_LABELS);
 
     // Set the data values.
-    input_label_data.insert(input_label_data.begin(), {-1.0, 0.0, 0.5, 1.0});
-    input_attr_data.insert(input_attr_data.begin(), {0.5, 1.0, 1.5, 2.0});
+    input_label_data = {-1.0, 0.0, 0.5, 1.0};
+
+    // Define expected output data.
+    expected_label_data_sorted = input_label_data;
+    expected_index_data = {0, 1, 2, 3};
+  }
+
+  SECTION("Write decreasing labels with array data") {
+    // Create the array.
+    create_example(TILEDB_DECREASING_LABELS);
+
+    // Set the data values.
+    input_label_data = {1.0, 0.0, -0.5, -1.0};
+    input_attr_data = {0.5, 1.0, 1.5, 2.0};
+
+    // Define expected output data.
+    expected_label_data_sorted = {-1.0, -0.5, 0.0, 1.0};
+    expected_index_data = {3, 2, 1, 0};
+  }
+
+  SECTION("Write decreasing labels only") {
+    // Create the array.
+    create_example(TILEDB_DECREASING_LABELS);
+
+    // Set the data values.
+    input_label_data = {1.0, 0.0, -0.5, -1.0};
+
+    // Define expected output data.
+    expected_label_data_sorted = {-1.0, -0.5, 0.0, 1.0};
+    expected_index_data = {3, 2, 1, 0};
   }
 
   // Write the array.
   write_array_with_label(input_attr_data, input_label_data);
 
-  // Read back and check indexed array.
-  {
-    auto label_data = read_indexed_array();
-    // Check results.
-    for (uint64_t ii{0}; ii < 4; ++ii) {
-      CHECK(label_data[ii] == input_label_data[ii]);
-    }
-  }
-
-  // Read back and check labelled array.
-  {
-    std::vector<uint64_t> input_index_data{0, 1, 2, 3};
-    auto [index_data, label_data] = read_labelled_array();
-    // Check results.
-    for (uint64_t ii{0}; ii < 4; ++ii) {
-      CHECK(label_data[ii] == input_label_data[ii]);
-    }
-    for (uint64_t ii{0}; ii < 4; ++ii) {
-      CHECK(index_data[ii] == input_index_data[ii]);
-    }
-  }
+  // Check the dimension label arrays have the correct data.
+  check_indexed_array_data(input_label_data);
+  check_labelled_array_data(expected_index_data, expected_label_data_sorted);
 }
