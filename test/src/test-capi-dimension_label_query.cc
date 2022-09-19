@@ -60,13 +60,17 @@ using namespace tiledb::test;
 /**
  * Create a small sparse array with a dimension label.
  *
+ *  TODO: Add array summary
  */
-template <tiledb_label_order_t label_order>
 class SparseArrayExample1 : public DimensionLabelFixture {
  public:
   SparseArrayExample1()
-      : index_domain_{0, 3}
+      : array_name{}
+      , index_domain_{0, 3}
       , label_domain_{-1, 1} {
+  }
+
+  void create_example(tiledb_label_order_t label_order) {
     // Create an array schema
     uint64_t x_tile_extent{4};
     auto array_schema = create_array_schema(
@@ -176,12 +180,14 @@ class SparseArrayExample1 : public DimensionLabelFixture {
  * Create a small dense array with a dimension label.
  *
  */
-template <tiledb_label_order_t label_order>
 class DenseArrayExample1 : public DimensionLabelFixture {
  public:
   DenseArrayExample1()
-      : index_domain_{0, 3}
+      : array_name{}
+      , index_domain_{0, 3}
       , label_domain_{-1, 1} {
+  }
+  void create_example(tiledb_label_order_t label_order) {
     // Create an array schema
     uint64_t x_tile_extent{4};
     auto array_schema = create_array_schema(
@@ -289,13 +295,34 @@ class DenseArrayExample1 : public DimensionLabelFixture {
 };
 
 TEST_CASE_METHOD(
-    SparseArrayExample1<TILEDB_INCREASING_LABELS>,
-    "Write increasing dimension label and array for sparse 1D array",
+    SparseArrayExample1,
+    "Write dimension label for sparse 1D array",
     "[capi][query][DimensionLabel]") {
   // Define input data and write.
-  std::vector<uint64_t> input_index_data{0, 1, 2, 3};
-  std::vector<double> input_label_data{-1.0, 0.0, 0.5, 1.0};
-  std::vector<double> input_attr_data{0.5, 1.0, 1.5, 2.0};
+  std::vector<uint64_t> input_index_data;
+  std::vector<double> input_label_data;
+  std::vector<double> input_attr_data;
+
+  SECTION("Write increasing labels with array data") {
+    // Create array.
+    create_example(TILEDB_INCREASING_LABELS);
+
+    // Set data value.
+    input_index_data.insert(input_index_data.begin(), {0, 1, 2, 3});
+    input_label_data.insert(input_label_data.begin(), {-1.0, 0.0, 0.5, 1.0});
+    input_attr_data.insert(input_attr_data.begin(), {0.5, 1.0, 1.5, 2.0});
+  }
+
+  SECTION("Write increasing labels only ") {
+    // Create array.
+    create_example(TILEDB_INCREASING_LABELS);
+
+    // Set data values.
+    input_index_data.insert(input_index_data.begin(), {0, 1, 2, 3});
+    input_label_data.insert(input_label_data.begin(), {-1.0, 0.0, 0.5, 1.0});
+  }
+
+  // Write the array and label.
   write_array_with_label(input_index_data, input_attr_data, input_label_data);
 
   // Read back and check indexed array.
@@ -321,44 +348,33 @@ TEST_CASE_METHOD(
 }
 
 TEST_CASE_METHOD(
-    SparseArrayExample1<TILEDB_INCREASING_LABELS>,
-    "Write increasing dimension label only for sparse 1D array",
+    DenseArrayExample1,
+    "Write dimension label for dense 1D array",
     "[capi][query][DimensionLabel]") {
-  // Define input data and write.
-  std::vector<uint64_t> input_index_data{0, 1, 2, 3};
-  std::vector<double> input_label_data{-1.0, 0.0, 0.5, 1.0};
-  std::vector<double> input_attr_data{0.5, 1.0, 1.5, 2.0};
-  write_array_with_label(input_index_data, input_attr_data, input_label_data);
+  std::vector<double> input_label_data{};
+  std::vector<double> input_attr_data{};
 
-  // Read back and check indexed array.
-  {
-    auto label_data = read_indexed_array();
-    // Check results.
-    for (uint64_t ii{0}; ii < 4; ++ii) {
-      CHECK(label_data[ii] == input_label_data[ii]);
-    }
+  SECTION("Write increasing labels with array data") {
+    // Create the array.
+    create_example(TILEDB_INCREASING_LABELS);
+
+    // Set the data values.
+    input_label_data.insert(input_label_data.begin(), {-1.0, 0.0, 0.5, 1.0});
+    input_attr_data.insert(input_attr_data.begin(), {0.5, 1.0, 1.5, 2.0});
   }
 
-  // Read back and check labelled array.
-  {
-    auto [index_data, label_data] = read_labelled_array();
-    // Check results.
-    for (uint64_t ii{0}; ii < 4; ++ii) {
-      CHECK(label_data[ii] == input_label_data[ii]);
-    }
-    for (uint64_t ii{0}; ii < 4; ++ii) {
-      CHECK(index_data[ii] == input_index_data[ii]);
-    }
-  }
-}
+  SECTION("Write increasing labels only") {
+    // Create the array.
+    create_example(TILEDB_INCREASING_LABELS);
 
-TEST_CASE_METHOD(
-    DenseArrayExample1<TILEDB_INCREASING_LABELS>,
-    "Write increasing dimension label and array for dense 1D array",
-    "[capi][query][DimensionLabel]") {
-  std::vector<double> input_label_data{-1.0, 0.0, 0.5, 1.0};
-  std::vector<double> input_attr_data{0.5, 1.0, 1.5, 2.0};
+    // Set the data values.
+    input_label_data.insert(input_label_data.begin(), {-1.0, 0.0, 0.5, 1.0});
+    input_attr_data.insert(input_attr_data.begin(), {0.5, 1.0, 1.5, 2.0});
+  }
+
+  // Write the array.
   write_array_with_label(input_attr_data, input_label_data);
+
   // Read back and check indexed array.
   {
     auto label_data = read_indexed_array();
