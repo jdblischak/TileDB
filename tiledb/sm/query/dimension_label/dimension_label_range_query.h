@@ -77,6 +77,11 @@ class DimensionLabelRangeQuery {
   /** Cancel the query. */
   void cancel();
 
+  /** Returns ``true`` if query successfully completed, and false otherwise. */
+  inline bool completed() const {
+    return status_ == QueryStatus::COMPLETED;
+  }
+
   /**
    * Finalize the query and update the computed index range if it contains an
    * extra value.

@@ -29,6 +29,7 @@
 #include "tiledb/sm/query/dimension_label/dimension_label_data_query.h"
 #include "tiledb/common/common.h"
 #include "tiledb/sm/dimension_label/dimension_label.h"
+#include "tiledb/sm/enums/query_status.h"
 #include "tiledb/sm/query/query.h"
 #include "tiledb/sm/query/query_buffer.h"
 #include "tiledb/sm/subarray/subarray.h"
@@ -47,16 +48,20 @@ DimensionLabelDataQuery::DimensionLabelDataQuery(
     bool add_indexed_query,
     bool add_labelled_query,
     optional<std::string> fragment_name)
-    : indexed_array_query{
-          add_indexed_query ?
-              tdb_unique_ptr<Query>(tdb_new(
-                  Query, storage_manager, dimension_label->indexed_array(), fragment_name)) :
-              nullptr} 
-    , labelled_array_query{
-          add_labelled_query ?
-              tdb_unique_ptr<Query>(tdb_new(
-                  Query, storage_manager, dimension_label->labelled_array(), fragment_name)) :
-              nullptr} {
+    : indexed_array_query{add_indexed_query ?
+                              tdb_unique_ptr<Query>(tdb_new(
+                                  Query,
+                                  storage_manager,
+                                  dimension_label->indexed_array(),
+                                  fragment_name)) :
+                              nullptr}
+    , labelled_array_query{add_labelled_query ?
+                               tdb_unique_ptr<Query>(tdb_new(
+                                   Query,
+                                   storage_manager,
+                                   dimension_label->labelled_array(),
+                                   fragment_name)) :
+                               nullptr} {
 }
 
 void DimensionLabelDataQuery::cancel() {
@@ -66,6 +71,13 @@ void DimensionLabelDataQuery::cancel() {
   if (labelled_array_query) {
     throw_if_not_ok(labelled_array_query->cancel());
   }
+}
+
+bool DimensionLabelDataQuery::completed() const {
+  return (!indexed_array_query ||
+          indexed_array_query->status() == QueryStatus::COMPLETED) &&
+         (!labelled_array_query ||
+          labelled_array_query->status() == QueryStatus::COMPLETED);
 }
 
 void DimensionLabelDataQuery::finalize() {
@@ -205,7 +217,6 @@ OrderedWriteDataQuery::OrderedWriteDataQuery(
     const uint32_t dim_idx,
     optional<std::string> fragment_name)
     : DimensionLabelDataQuery{
-
           storage_manager, dimension_label, true, true, fragment_name} {
   // Verify only one dimension label is set.
   if (!dimension_label->labelled_array()->is_empty() ||

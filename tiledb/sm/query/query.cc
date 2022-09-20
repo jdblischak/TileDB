@@ -1237,17 +1237,22 @@ Status Query::process() {
     coord_offsets_buffer_is_set_ = false;
   }
 
-  // Check if the query is complete
-  bool completed = only_dim_label_query() || !strategy_->incomplete();
-
-  // TODO: Add in logic for in the dimension label query is not complete.
-
-  // Handle callback and status
-  if (completed) {
-    if (callback_ != nullptr)
-      callback_(callback_data_);
-    status_ = QueryStatus::COMPLETED;
+  // Check if main query is completed:
+  //  * Completed: Check if dimension label queries are completed.
+  //    - Dimenison labels completed: set status COMPLETED
+  //    - Dimension labels NOT completed: INCOMPLETE (handle callback)
+  //  * NOT Completed: INCOMPLETE (handle callback)
+  if (only_dim_label_query() || !strategy_->incomplete()) {
+    if (!dim_label_queries_ || dim_label_queries_->completed()) {
+      status_ = QueryStatus::COMPLETED;
+    } else {
+      // TODO: Set callback data from dimension label?
+      status_ = QueryStatus::INCOMPLETE;
+    }
   } else {  // Incomplete
+    if (callback_ != nullptr) {
+      callback_(callback_data_);
+    }
     status_ = QueryStatus::INCOMPLETE;
   }
 

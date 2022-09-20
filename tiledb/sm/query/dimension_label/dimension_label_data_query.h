@@ -65,19 +65,22 @@ class DimensionLabelDataQuery {
 
   virtual ~DimensionLabelDataQuery() = default;
 
-  /** TODO */
+  /** TODO: docs */
   void cancel();
 
-  /** TODO */
+  /** TODO: docs */
+  bool completed() const;
+
+  /** TODO: docs */
   void finalize();
 
-  /** TODO */
+  /** TODO: docs */
   void process();
 
-  /** TODO */
+  /** TODO: docs */
   tdb_unique_ptr<Query> indexed_array_query{nullptr};
 
-  /** TODO */
+  /** TODO: docs */
   tdb_unique_ptr<Query> labelled_array_query{nullptr};
 };
 

@@ -42,6 +42,8 @@
 #include "tiledb/sm/query/dimension_label/dimension_label_range_query.h"
 #include "tiledb/sm/query/query.h"
 
+#include <algorithm>
+
 using namespace tiledb::common;
 
 namespace tiledb::sm {
@@ -370,6 +372,17 @@ void DimensionLabelQueries::add_range_queries(
     }
     range_queries_[dim_idx] = range_queries_map_[dim_label_ref.name()].get();
   }
+}
+
+bool DimensionLabelQueries::completed() const {
+  return std::all_of(
+             range_queries_.cbegin(),
+             range_queries_.cend(),
+             [](const auto& query) { return query->completed(); }) &&
+         std::all_of(
+             data_queries_.cbegin(),
+             data_queries_.cend(),
+             [](const auto& query) { return query.second->completed(); });
 }
 
 DimensionLabel* DimensionLabelQueries::open_dimension_label(

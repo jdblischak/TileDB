@@ -96,6 +96,9 @@ class DimensionLabelQueries {
   DISABLE_MOVE_AND_MOVE_ASSIGN(DimensionLabelQueries);
 
   /** TODO: docs */
+  bool completed() const;
+
+  /** TODO: docs */
   void cancel();
 
   /** TODO: docs */
