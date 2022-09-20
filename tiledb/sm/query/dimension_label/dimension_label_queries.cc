@@ -41,6 +41,7 @@
 #include "tiledb/sm/query/dimension_label/dimension_label_data_query.h"
 #include "tiledb/sm/query/dimension_label/dimension_label_range_query.h"
 #include "tiledb/sm/query/query.h"
+#include "tiledb/storage_format/uri/generate_uri.h"
 
 #include <algorithm>
 
@@ -64,6 +65,11 @@ DimensionLabelQueries::DimensionLabelQueries(
           storage_manager, array, subarray, label_buffers);
       break;
     case (QueryType::WRITE):
+      if (!fragment_name.has_value()) {
+        fragment_name = storage_format::generate_fragment_name(
+            array->timestamp_end_opened_at(),
+            array->array_schema_latest().write_version());
+      }
       add_range_queries(
           storage_manager, array, subarray, label_buffers, array_buffers);
       add_data_queries_for_write(
