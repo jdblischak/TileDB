@@ -335,7 +335,7 @@ class DenseArrayExample1 : public DimensionLabelFixture {
 
 TEST_CASE_METHOD(
     SparseArrayExample1,
-    "Write dimension label for sparse 1D array",
+    "Round trip dimension label and array data for sparse 1D array",
     "[capi][query][DimensionLabel]") {
   // Define the input data values.
   std::vector<uint64_t> input_index_data{};
@@ -346,7 +346,7 @@ TEST_CASE_METHOD(
   std::vector<double> expected_label_data_sorted{};
   std::vector<uint64_t> expected_index_data{};
 
-  SECTION("Write increasing labels with array data") {
+  SECTION("Write increasing labels", "[IncreasingLabels]") {
     // Create array.
     create_example(TILEDB_INCREASING_LABELS);
 
@@ -360,7 +360,56 @@ TEST_CASE_METHOD(
     expected_index_data = input_index_data;
   }
 
-  SECTION("Write increasing labels only ") {
+  SECTION("Write decreasing labels", "[DecreasingLabels]") {
+    // Create the array.
+    create_example(TILEDB_DECREASING_LABELS);
+
+    // Set the data values.
+    input_index_data = {0, 1, 2, 3};
+    input_label_data = {1.0, 0.0, -0.5, -1.0};
+    input_attr_data = {0.5, 1.0, 1.5, 2.0};
+
+    // Define expected output data.
+    expected_label_data_sorted = {-1.0, -0.5, 0.0, 1.0};
+    expected_index_data = {3, 2, 1, 0};
+  }
+
+  SECTION("Write unordered labels", "[UnorderedLabels]") {
+    // Create the array.
+    create_example(TILEDB_DECREASING_LABELS);
+
+    // Set the data values.
+    input_index_data = {0, 3, 2, 1};
+    input_label_data = {1.0, 0.0, -0.5, -1.0};
+    input_attr_data = {0.5, 1.0, 1.5, 2.0};
+
+    // Define expected output data.
+    expected_label_data_sorted = {-1.0, -0.5, 0.0, 1.0};
+    expected_index_data = {1, 2, 3, 0};
+  }
+
+  // Write the array and label.
+  write_array_with_label(input_index_data, input_attr_data, input_label_data);
+
+  // Check the dimension label arrays have the correct data.
+  check_indexed_array_data(input_label_data);
+  check_labelled_array_data(expected_index_data, expected_label_data_sorted);
+}
+
+TEST_CASE_METHOD(
+    SparseArrayExample1,
+    "Round trip dimension label data for sparse 1D array",
+    "[capi][query][DimensionLabel]") {
+  // Define the input data values.
+  std::vector<uint64_t> input_index_data{};
+  std::vector<double> input_label_data{};
+  std::vector<double> input_attr_data{};
+
+  // Define the expected output values for the labelled array.
+  std::vector<double> expected_label_data_sorted{};
+  std::vector<uint64_t> expected_index_data{};
+
+  SECTION("Write increasing labels", "[IncreasingLabels]") {
     // Create array.
     create_example(TILEDB_INCREASING_LABELS);
 
@@ -374,31 +423,30 @@ TEST_CASE_METHOD(
     expected_index_data = input_index_data;
   }
 
-  SECTION("Write decreasing labels with array data") {
+  SECTION("Write decreasing labels", "[DecreasingLabels]") {
     // Create the array.
     create_example(TILEDB_DECREASING_LABELS);
 
     // Set the data values.
     input_index_data = {0, 1, 2, 3};
     input_label_data = {1.0, 0.0, -0.5, -1.0};
-    input_attr_data = {0.5, 1.0, 1.5, 2.0};
 
     // Define expected output data.
     expected_label_data_sorted = {-1.0, -0.5, 0.0, 1.0};
     expected_index_data = {3, 2, 1, 0};
   }
 
-  SECTION("Write decreasing labels only") {
+  SECTION("Write unordered labels", "[UnorderedLabels]") {
     // Create the array.
     create_example(TILEDB_DECREASING_LABELS);
 
     // Set the data values.
-    input_index_data = {0, 1, 2, 3};
+    input_index_data = {0, 3, 2, 1};
     input_label_data = {1.0, 0.0, -0.5, -1.0};
 
     // Define expected output data.
     expected_label_data_sorted = {-1.0, -0.5, 0.0, 1.0};
-    expected_index_data = {3, 2, 1, 0};
+    expected_index_data = {1, 2, 3, 0};
   }
 
   // Write the array and label.
@@ -411,7 +459,7 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     DenseArrayExample1,
-    "Write dimension label for dense 1D array",
+    "Round trip dimension label and array data for dense 1d array",
     "[capi][query][DimensionLabel]") {
   // Define the input data values.
   std::vector<double> input_label_data{};
@@ -421,7 +469,7 @@ TEST_CASE_METHOD(
   std::vector<double> expected_label_data_sorted{};
   std::vector<uint64_t> expected_index_data{};
 
-  SECTION("Write increasing labels with array data") {
+  SECTION("Write increasing labels", "[IncreasingLabels]") {
     // Create the array.
     create_example(TILEDB_INCREASING_LABELS);
 
@@ -434,19 +482,7 @@ TEST_CASE_METHOD(
     expected_index_data = {0, 1, 2, 3};
   }
 
-  SECTION("Write increasing labels only") {
-    // Create the array.
-    create_example(TILEDB_INCREASING_LABELS);
-
-    // Set the data values.
-    input_label_data = {-1.0, 0.0, 0.5, 1.0};
-
-    // Define expected output data.
-    expected_label_data_sorted = input_label_data;
-    expected_index_data = {0, 1, 2, 3};
-  }
-
-  SECTION("Write decreasing labels with array data") {
+  SECTION("Write decreasing labels", "[DecreasingLabels]") {
     // Create the array.
     create_example(TILEDB_DECREASING_LABELS);
 
@@ -459,7 +495,52 @@ TEST_CASE_METHOD(
     expected_index_data = {3, 2, 1, 0};
   }
 
-  SECTION("Write decreasing labels only") {
+  SECTION("Write unordered labels", "[UnorderedLabels]") {
+    // Create the array.
+    create_example(TILEDB_DECREASING_LABELS);
+
+    // Set the data values.
+    input_label_data = {-0.5, 1.0, 0.0, -1.0};
+    input_attr_data = {0.5, 1.0, 1.5, 2.0};
+
+    // Define expected output data.
+    expected_label_data_sorted = {-1.0, -0.5, 0.0, 1.0};
+    expected_index_data = {3, 0, 2, 1};
+  }
+
+  // Write the array.
+  write_array_with_label(input_attr_data, input_label_data);
+
+  // Check the dimension label arrays have the correct data.
+  check_indexed_array_data(input_label_data);
+  check_labelled_array_data(expected_index_data, expected_label_data_sorted);
+}
+
+TEST_CASE_METHOD(
+    DenseArrayExample1,
+    "Round trip dimension label data for dense 1d array",
+    "[capi][query][DimensionLabel]") {
+  // Define the input data values.
+  std::vector<double> input_label_data{};
+  std::vector<double> input_attr_data{};
+
+  // Define the expected output values.
+  std::vector<double> expected_label_data_sorted{};
+  std::vector<uint64_t> expected_index_data{};
+
+  SECTION("Write increasing labels", "[IncreasingLabels]") {
+    // Create the array.
+    create_example(TILEDB_INCREASING_LABELS);
+
+    // Set the data values.
+    input_label_data = {-1.0, 0.0, 0.5, 1.0};
+
+    // Define expected output data.
+    expected_label_data_sorted = input_label_data;
+    expected_index_data = {0, 1, 2, 3};
+  }
+
+  SECTION("Write decreasing labels", "[DecreasingLabels]") {
     // Create the array.
     create_example(TILEDB_DECREASING_LABELS);
 
@@ -469,6 +550,19 @@ TEST_CASE_METHOD(
     // Define expected output data.
     expected_label_data_sorted = {-1.0, -0.5, 0.0, 1.0};
     expected_index_data = {3, 2, 1, 0};
+  }
+
+  SECTION("Write unordered labels", "[UnorderedLabels]") {
+    // Create the array.
+    create_example(TILEDB_DECREASING_LABELS);
+
+    // Set the data values.
+    input_label_data = {-0.5, 1.0, 0.0, -1.0};
+    input_attr_data = {0.5, 1.0, 1.5, 2.0};
+
+    // Define expected output data.
+    expected_label_data_sorted = {-1.0, -0.5, 0.0, 1.0};
+    expected_index_data = {3, 0, 2, 1};
   }
 
   // Write the array.
