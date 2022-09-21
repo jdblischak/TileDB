@@ -1224,6 +1224,12 @@ Status query_to_capnp(
                                   "serialization not supported for writes."));
   }
 
+  if (query.uses_dimension_labels()) {
+    return LOG_STATUS(Status_SerializationError(
+        "Cannot serialize; serialization is not yet supported for queries "
+        "using dimension labels."));
+  }
+
   if (array == nullptr) {
     return LOG_STATUS(
         Status_SerializationError("Cannot serialize; array is null."));
