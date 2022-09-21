@@ -35,6 +35,7 @@
 
 #include "tiledb/common/common.h"
 #include "tiledb/sm/filesystem/uri.h"
+#include "tiledb/sm/misc/constants.h"
 #include "tiledb/storage_format/serialization/serializers.h"
 #include "tiledb/type/range/range.h"
 
@@ -149,6 +150,13 @@ class DimensionLabelReference {
   }
 
   /**
+   * Returns ``true`` is the label cells are variable length.
+   */
+  inline bool is_var() const {
+    return label_cell_val_num_ == constants::var_num;
+  }
+
+  /**
    * Returns ``true`` if the dimension label schema if set and ``false``
    * otherwise.
    */
@@ -201,6 +209,11 @@ class DimensionLabelReference {
   /** Returns the URI of the dimension label. */
   inline const URI& uri() const {
     return uri_;
+  }
+
+  /** Returns ``true`` if the URI is relative to the array URI. */
+  inline bool uri_is_relative() const {
+    return relative_uri_;
   }
 
  private:
