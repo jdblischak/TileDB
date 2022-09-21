@@ -369,8 +369,7 @@ class Subarray {
       const std::string& attr_name) const;
 
   /**
-   * Returns the name of the dimension label at the dimension index if label
-   * ranges are set and ``nullopt`` otherwise.
+   * Returns the name of the dimension label at the dimension index.
    *
    * @param dim_index Index of the dimension to return the label name for.
    */
