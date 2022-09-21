@@ -1200,6 +1200,12 @@ Status Query::process() {
 
     // TODO: Check if the subarray has an empty element and return successful
     // query with no resulting data.
+    for (uint32_t dim_idx{0}; dim_idx < subarray_.dim_num(); ++dim_idx) {
+      if (subarray_.empty(dim_idx)) {
+        return logger_->status(Status_QueryError(
+            "No range set on dimension " + std::to_string(dim_idx)));
+      }
+    }
 
     // Label queries are completed and the subarray is fully updated. We can
     // create the query strategy now.
