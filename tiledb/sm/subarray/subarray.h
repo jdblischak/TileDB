@@ -625,6 +625,9 @@ class Subarray {
   /** Returns the domain the subarray is constructed from. */
   NDRange domain() const;
 
+  /** ``True`` if the dimension of the subarray does not contain any ranges. */
+  bool empty(uint32_t dim_idx) const;
+
   /** ``True`` if the subarray does not contain any ranges. */
   bool empty() const;
 

@@ -872,6 +872,10 @@ bool Subarray::empty() const {
   return range_num() == 0;
 }
 
+bool Subarray::empty(uint32_t dim_idx) const {
+  return range_subset_[dim_idx].is_empty();
+}
+
 QueryType Subarray::get_query_type() const {
   if (array_ == nullptr)
     throw StatusException(Status_SubarrayError(
