@@ -104,6 +104,8 @@ class IndexData {
   virtual void* data() = 0;
   virtual uint64_t* data_size() = 0;
 };
+
+/** TODO: Docs */
 template <
     typename T,
     typename std::enable_if<std::is_integral<T>::value>::type* = nullptr>
