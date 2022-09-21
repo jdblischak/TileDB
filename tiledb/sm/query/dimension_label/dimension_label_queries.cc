@@ -56,7 +56,8 @@ DimensionLabelQueries::DimensionLabelQueries(
     const std::unordered_map<std::string, QueryBuffer>& label_buffers,
     const std::unordered_map<std::string, QueryBuffer>& array_buffers,
     optional<std::string> fragment_name)
-    : range_query_status_{QueryStatus::UNINITIALIZED} {
+    : range_queries_(subarray.dim_num(), nullptr)
+    , range_query_status_{QueryStatus::UNINITIALIZED} {
   switch (array->get_query_type()) {
     case (QueryType::READ):
       add_range_queries(
@@ -95,8 +96,8 @@ DimensionLabelQueries::DimensionLabelQueries(
           "Failed to add dimension label queries. Unknown query type " +
           query_type_str(array->get_query_type()) + "."));
   }
-  range_query_status_ =
-      range_queries_.empty() ? QueryStatus::COMPLETED : QueryStatus::INPROGRESS;
+  range_query_status_ = range_queries_map_.empty() ? QueryStatus::COMPLETED :
+                                                     QueryStatus::INPROGRESS;
 }
 
 void DimensionLabelQueries::cancel() {
@@ -163,26 +164,21 @@ void DimensionLabelQueries::process_range_queries(Subarray& subarray) {
       st = subarray.add_point_ranges(dim_idx, range_start, count);
     } else {
       // TODO: Before merge rebase to use new method for bulk adding ranges
-      if (count != 1) {
-        auto range_size = 2 * subarray.array()
-                                  ->array_schema_latest()
-                                  .dimension_ptr(dim_idx)
-                                  ->coord_size();
-        for (uint64_t range_idx{0}; range_idx < count; ++range_idx) {
-          const auto* start =
-              static_cast<const uint8_t*>(range_start) + range_idx * range_size;
-          const auto* end = static_cast<const uint8_t*>(range_start) +
-                            (range_idx + 1) * range_size;
-          st = subarray.add_range(dim_idx, start, end, nullptr);
-          if (!st.ok()) {
-            break;
-          }
+      auto range_size = 2 * subarray.array()
+                                ->array_schema_latest()
+                                .dimension_ptr(dim_idx)
+                                ->coord_size();
+      for (uint64_t range_idx{0}; range_idx < count; ++range_idx) {
+        const auto* start =
+            static_cast<const uint8_t*>(range_start) + range_idx * range_size;
+        const auto* end = static_cast<const uint8_t*>(range_start) +
+                          (range_idx + 1) * range_size;
+        st = subarray.add_range(dim_idx, start, end, nullptr);
+        if (!st.ok()) {
+          range_query_status_ = QueryStatus::FAILED;
+          throw StatusException(st);
         }
       }
-    }
-    if (!st.ok()) {
-      range_query_status_ = QueryStatus::FAILED;
-      throw StatusException(st);
     }
 
     // TODO: Store completion of individual ranges and skip over them once
@@ -382,9 +378,9 @@ void DimensionLabelQueries::add_range_queries(
 
 bool DimensionLabelQueries::completed() const {
   return std::all_of(
-             range_queries_.cbegin(),
-             range_queries_.cend(),
-             [](const auto& query) { return query->completed(); }) &&
+             range_queries_map_.cbegin(),
+             range_queries_map_.cend(),
+             [](const auto& query) { return query.second->completed(); }) &&
          std::all_of(
              data_queries_.cbegin(),
              data_queries_.cend(),
