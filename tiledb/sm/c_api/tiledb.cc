@@ -6401,6 +6401,7 @@ int32_t tiledb_serialize_fragment_info(
     tiledb_ctx_t* ctx,
     const tiledb_fragment_info_t* fragment_info,
     tiledb_serialization_type_t serialize_type,
+    int32_t client_side,
     tiledb_buffer_t** buffer) {
   // Sanity check
   if (sanity_check(ctx) == TILEDB_ERR ||
@@ -6420,7 +6421,8 @@ int32_t tiledb_serialize_fragment_info(
           tiledb::sm::serialization::fragment_info_serialize(
               *fragment_info->fragment_info_,
               (tiledb::sm::SerializationType)serialize_type,
-              (*buffer)->buffer_))) {
+              (*buffer)->buffer_,
+              client_side))) {
     detail::tiledb_buffer_free(buffer);
     return TILEDB_ERR;
   }
@@ -6432,6 +6434,7 @@ int32_t tiledb_deserialize_fragment_info(
     tiledb_ctx_t* ctx,
     const tiledb_buffer_t* buffer,
     tiledb_serialization_type_t serialize_type,
+    const char* array_uri,
     tiledb_fragment_info_t* fragment_info) {
   // Sanity check
   if (sanity_check(ctx) == TILEDB_ERR ||
@@ -6440,11 +6443,22 @@ int32_t tiledb_deserialize_fragment_info(
     return TILEDB_ERR;
   }
 
+  // Check array uri
+  tiledb::sm::URI uri(array_uri);
+  if (uri.is_invalid()) {
+    auto st =
+        Status_Error("Failed to deserialize fragment info; Invalid array URI");
+    LOG_STATUS(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
+  }
+
   if (SAVE_ERROR_CATCH(
           ctx,
           tiledb::sm::serialization::fragment_info_deserialize(
               fragment_info->fragment_info_,
               (tiledb::sm::SerializationType)serialize_type,
+              uri,
               *buffer->buffer_))) {
     return TILEDB_ERR;
   }
@@ -9937,18 +9951,20 @@ int32_t tiledb_serialize_fragment_info(
     tiledb_ctx_t* ctx,
     const tiledb_fragment_info_t* fragment_info,
     tiledb_serialization_type_t serialize_type,
+    int32_t client_side,
     tiledb_buffer_t** buffer) noexcept {
   return api_entry<detail::tiledb_serialize_fragment_info>(
-      ctx, fragment_info, serialize_type, buffer);
+      ctx, fragment_info, serialize_type, client_side, buffer);
 }
 
 int32_t tiledb_deserialize_fragment_info(
     tiledb_ctx_t* ctx,
     const tiledb_buffer_t* buffer,
     tiledb_serialization_type_t serialize_type,
+    const char* array_uri,
     tiledb_fragment_info_t* fragment_info) noexcept {
   return api_entry<detail::tiledb_deserialize_fragment_info>(
-      ctx, buffer, serialize_type, fragment_info);
+      ctx, buffer, serialize_type, array_uri, fragment_info);
 }
 
 /* ****************************** */
