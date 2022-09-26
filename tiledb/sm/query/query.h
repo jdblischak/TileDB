@@ -666,7 +666,7 @@ class Query {
    * QueryBuffer.
    *
    * This function is intended to be a convenience method for use setting
-   * buffers for dimesnion labels.
+   * buffers for dimension labels.
    *
    * @WARNING Does not check for or copy validity data.
    *
