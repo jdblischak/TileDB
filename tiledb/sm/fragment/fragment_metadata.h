@@ -1021,6 +1021,11 @@ class FragmentMetadata {
     return has_delete_meta_;
   }
 
+  /** has_consolidated_footer accessor */
+  bool& has_consolidated_footer() {
+    return has_consolidated_footer_;
+  }
+
   /** sparse_tile_num accessor */
   uint64_t& sparse_tile_num() {
     return sparse_tile_num_;
