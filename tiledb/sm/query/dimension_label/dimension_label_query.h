@@ -187,6 +187,19 @@ class TypedIndexData : public IndexData {
     data_size_ = sizeof(T) * data_.size();
   }
 
+  /**
+   * Constructor.
+   *
+   * This will create a vector of the index type large enough to store the
+   * requested number of values.
+   *
+   * @param num_values Number of values the data array must be able to store.
+   */
+  TypedIndexData(const uint64_t num_values)
+      : data_(num_values)
+      , data_size_{sizeof(T) * num_values} {
+  }
+
   /** Pointer access to index data. */
   void* data() override {
     return data_.data();
