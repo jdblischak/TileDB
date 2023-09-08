@@ -1,1 +1,1 @@
-Sitemap: https://github.com/TileDB-Inc/TileDB/sitemap.xml
+Sitemap: https://github.com/jdblischak/TileDB/sitemap.xml
